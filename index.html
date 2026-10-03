@@ -1,0 +1,3273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학급편성 편하샘 - 초등학교 학급편성 시스템</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (Excel Parsing & Export) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        * {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Drag and Drop Visual Feedback */
+        .drag-over {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+        .dragging-card {
+            opacity: 0.45;
+            transform: scale(0.96);
+        }
+
+        /* Print Optimization */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
+
+    <!-- Top Header Bar -->
+    <header class="no-print bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-500 flex items-center justify-center text-white text-xl font-black shadow-md shadow-orange-500/25">
+                    <i class="fa-solid fa-school"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-[26px] sm:text-[28px] text-slate-900 tracking-tight leading-normal flex items-center gap-2.5">
+                        <span class="inline-flex items-center gap-1.5 text-blue-600 font-black">
+                            <span class="relative inline-block">학<span class="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-orange-500"></span></span>
+                            <span class="relative inline-block">급<span class="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-orange-500"></span></span>
+                            <span class="relative inline-block">편<span class="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-orange-500"></span></span>
+                            <span class="relative inline-block">성<span class="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-orange-500"></span></span>
+                        </span>
+                        <span class="text-orange-400 font-black">편하샘</span>
+                        <span id="header-school-badge" class="text-xs font-bold px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-300 ml-1">빛여울초 2027학년도 3학년 진급</span>
+                    </h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto p-3 sm:p-6 gap-5">
+        <!-- Sidebar Navigation -->
+        <aside class="no-print w-full md:w-64 shrink-0">
+            <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-xs space-y-1 md:sticky md:top-24">
+                
+                <!-- 1. 사용설명서 -->
+                <button type="button" onclick="switchTab('instructions')" id="nav-btn-instructions" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-600 hover:bg-slate-50">
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 text-sm">
+                        <i class="fa-solid fa-book-open"></i>
+                    </div>
+                    <span>사용설명서</span>
+                </button>
+
+                <!-- 2. 환경 설정 -->
+                <button type="button" onclick="switchTab('settings')" id="nav-btn-settings" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-600 hover:bg-slate-50">
+                    <div class="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center text-rose-600 text-sm">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <span>학급편성 환경 설정</span>
+                </button>
+
+                <!-- 데이터 백업/복원 -->
+                <button type="button" onclick="openBackupModal()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-cyan-50 hover:text-cyan-700 transition-all text-left">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center text-cyan-600 text-sm">
+                        <i class="fa-solid fa-database"></i>
+                    </div>
+                    <span>데이터 백업/복원</span>
+                </button>
+
+                <!-- 3. 반편성용 학생카드 -->
+                <button type="button" onclick="switchTab('cards')" id="nav-btn-cards" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-600 hover:bg-slate-50">
+                    <div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 text-sm">
+                        <i class="fa-solid fa-id-card"></i>
+                    </div>
+                    <span>반편성용 학생카드</span>
+                </button>
+
+                <!-- 4. 반편성 보드 -->
+                <button type="button" onclick="switchTab('board')" id="nav-btn-board" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-600 hover:bg-slate-50">
+                    <div class="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600 text-sm">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+                    <span>반편성 보드</span>
+                </button>
+
+                <!-- 5. 내년 반편성 명단 -->
+                <button type="button" onclick="switchTab('next-roster')" id="nav-btn-next-roster" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-600 hover:bg-slate-50">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm">
+                        <i class="fa-solid fa-table-list"></i>
+                    </div>
+                    <span id="nav-title-next-roster">내년 3학년 진급반 명단</span>
+                </button>
+
+                <!-- 6. 올해 반별 배정명단 -->
+                <button type="button" onclick="switchTab('cur-roster')" id="nav-btn-cur-roster" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-600 hover:bg-slate-50">
+                    <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 text-sm">
+                        <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                    </div>
+                    <span id="nav-title-cur-roster">올해 2학년 반편성 명단</span>
+                </button>
+
+                <!-- 7. 통계자료 확인 -->
+                <button type="button" onclick="switchTab('stats')" id="nav-btn-stats" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-600 hover:bg-slate-50">
+                    <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 text-sm">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                    <span>반편성 통계표</span>
+                </button>
+
+                <!-- 8. 명렬표 일괄 인쇄 -> 반편성 자료 전체 인쇄 -->
+                <button type="button" onclick="printAllRosters()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all text-left">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-sm">
+                        <i class="fa-solid fa-print"></i>
+                    </div>
+                    <span>반편성 자료 전체 인쇄</span>
+                </button>
+
+                <!-- 9. 엑셀 내보내기 -->
+                <button type="button" onclick="exportPlacementExcel()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-all text-left">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </div>
+                    <span>엑셀 내보내기</span>
+                </button>
+
+                <!-- 하단 크레딧 -->
+                <div class="pt-3 pb-1 border-t border-slate-100 text-center">
+                    <span class="text-[12px] font-semibold text-slate-400 select-none">作 song seung ki</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 w-full min-w-0">
+
+            <!-- View 1: 사용설명서 -->
+            <section id="view-instructions" class="tab-view hidden space-y-6">
+                <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                    <div class="flex items-center gap-3 border-b border-slate-100 pb-5">
+                        <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-book-open"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+                                <span class="inline-flex items-center gap-1.5 text-blue-600 font-black">
+                                    <span class="relative inline-block">학<span class="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-orange-500"></span></span>
+                                    <span class="relative inline-block">급<span class="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-orange-500"></span></span>
+                                    <span class="relative inline-block">편<span class="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-orange-500"></span></span>
+                                    <span class="relative inline-block">성<span class="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-orange-500"></span></span>
+                                </span>
+                                <span class="text-orange-400 font-black">편하샘</span>
+                                <span class="text-slate-900">사용설명서</span>
+                            </h2>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div class="bg-blue-50/60 border border-blue-100 p-5 rounded-2xl flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center gap-2.5 mb-3">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-600 text-white font-extrabold flex items-center justify-center text-sm shrink-0">1</div>
+                                    <h3 class="font-extrabold text-slate-900 text-base">학급편성 <span class="text-blue-600">환경설정</span></h3>
+                                </div>
+                                <div class="text-[14px] text-slate-600 leading-relaxed space-y-1.5">
+                                    <div class="flex items-start gap-1.5">
+                                        <span class="shrink-0 font-bold select-none">*</span>
+                                        <span class="flex-1">진급에 필요한 기본 정보를 설정합니다.</span>
+                                    </div>
+                                    <div class="pl-3 space-y-0.5 text-[13px] text-slate-500">
+                                        <p>- 학교 이름</p>
+                                        <p>- 진급 학년도</p>
+                                        <p>- 진급 학년</p>
+                                        <p>- 올해 학급 수</p>
+                                        <p>- 진급 학년 학급 수</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-orange-50/60 border border-orange-100 p-5 rounded-2xl flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center gap-2.5 mb-3">
+                                    <div class="w-8 h-8 rounded-lg bg-orange-600 text-white font-extrabold flex items-center justify-center text-sm shrink-0">2</div>
+                                    <h3 class="font-extrabold text-slate-900 text-base">반편성용 <span class="text-orange-600">학생카드</span> 만들기</h3>
+                                </div>
+                                <div class="text-[14px] text-slate-600 leading-relaxed space-y-1.5">
+                                    <div class="flex items-start gap-1.5">
+                                        <span class="shrink-0 font-bold select-none">*</span>
+                                        <span class="flex-1">NEIS 명렬표를 이용해 학생카드를 만듭니다.</span>
+                                    </div>
+                                    <div class="flex items-start gap-1.5">
+                                        <span class="shrink-0 font-bold select-none">*</span>
+                                        <span class="flex-1">학생카드를 삭제하거나 추가하여 진급 학생 수와 일치하는 학생카드를 만듭니다.</span>
+                                    </div>
+                                    <div class="flex items-start gap-1.5">
+                                        <span class="shrink-0 font-bold select-none">*</span>
+                                        <span class="flex-1">학생카드를 인쇄하여 반 편성을 실시하고 반별(가, 나, 다 반)로 학생카드를 모아둡니다.</span>
+                                    </div>
+                                    <div class="flex items-start gap-1.5">
+                                        <span class="shrink-0 font-bold select-none">*</span>
+                                        <span class="flex-1">이름 가나다순으로 정렬할 필요 없이 카드만 반별로 모아둡니다.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-emerald-50/60 border border-emerald-100 p-5 rounded-2xl flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center gap-2.5 mb-3">
+                                    <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white font-extrabold flex items-center justify-center text-sm shrink-0">3</div>
+                                    <h3 class="font-extrabold text-slate-900 text-base"><span class="text-emerald-600">반편성 보드</span>로 학급편성 하기</h3>
+                                </div>
+                                <div class="text-[14px] text-slate-600 leading-relaxed space-y-1.5">
+                                    <div class="flex items-start gap-1.5">
+                                        <span class="shrink-0 font-bold select-none">*</span>
+                                        <span class="flex-1">반편성 보드 메뉴에서 반편성 해둔 학생카드를 활용하여 반편성을 합니다.</span>
+                                    </div>
+                                    <div class="flex items-start gap-1.5">
+                                        <span class="shrink-0 font-bold select-none">*</span>
+                                        <span class="flex-1">배정이 마무리되면 자동으로 내년 진급반 명단이 이름 가나다순으로 정리되어 만들어집니다.</span>
+                                    </div>
+                                    <div class="flex items-start gap-1.5">
+                                        <span class="shrink-0 font-bold select-none">*</span>
+                                        <span class="flex-1">올해 반의 반편성 명단도 자동으로 만들어집니다.</span>
+                                    </div>
+                                    <div class="flex items-start gap-1.5">
+                                        <span class="shrink-0 font-bold select-none">*</span>
+                                        <span class="flex-1">내년 진급반 명단의 비고를 입력하면 올해 명단에도 자동 반영됩니다.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- New: 데이터 백업/복원 안내 글상자 -->
+                    <div class="bg-cyan-50/60 border border-cyan-100 p-5 rounded-2xl">
+                        <div class="flex items-center gap-2.5 mb-3">
+                            <div class="w-8 h-8 rounded-lg bg-cyan-600 text-white font-extrabold flex items-center justify-center text-[19px] shrink-0">※</div>
+                            <h3 class="font-extrabold text-slate-900 text-base">데이터 <span class="text-cyan-600">백업/복원</span></h3>
+                        </div>
+                        <div class="text-[14px] text-slate-600 leading-relaxed space-y-1.5">
+                            <div class="flex items-start gap-1.5">
+                                <span class="shrink-0 font-bold select-none">*</span>
+                                <span class="flex-1">백업: 백업을 하면 지금까지 한 작업을 파일로 저장할 수 있습니다.</span>
+                            </div>
+                            <div class="flex items-start gap-1.5">
+                                <span class="shrink-0 font-bold select-none">*</span>
+                                <span class="flex-1">복원: 저장한 파일을 불러와 작업을 이어갈 수 있습니다.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 2: 학급편성 환경 설정 -->
+            <section id="view-settings" class="tab-view hidden space-y-6">
+                <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                    <div class="flex items-center gap-3 border-b border-slate-100 pb-5">
+                        <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-sliders"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">학급편성 환경 설정</h2>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-stretch text-center">
+                        <!-- 학교명 -->
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col justify-between text-center">
+                            <label for="setting-school" class="block text-xs font-black text-slate-800 mb-1.5 text-center">학교 이름</label>
+                            <input type="text" id="setting-school" value="빛여울초" placeholder="학교 이름 입력"
+                                   class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                        </div>
+
+                        <!-- 진급 학년도 -->
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col justify-between text-center">
+                            <label for="setting-year" class="block text-xs font-black text-slate-800 mb-1.5 text-center">진급 학년도</label>
+                            <input type="number" id="setting-year" min="2020" max="2040" value="2027"
+                                   class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                        </div>
+
+                        <!-- 현재 학년 -->
+                        <div class="bg-blue-50/70 p-4 rounded-2xl border border-blue-200/80 flex flex-col justify-between text-center">
+                            <label for="setting-cur-grade" class="block text-xs font-black text-blue-900 mb-1.5 text-center">현재 학년</label>
+                            <select id="setting-cur-grade" onchange="handleCurrentGradeChange()" style="text-align-last: center;"
+                                    class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-white font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                                <option value="0">신입생</option>
+                                <option value="1">1학년</option>
+                                <option value="2" selected>2학년</option>
+                                <option value="3">3학년</option>
+                                <option value="4">4학년</option>
+                                <option value="5">5학년</option>
+                            </select>
+                        </div>
+
+                        <!-- 올해 학급 수 -->
+                        <div id="box-cur-classes" class="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200/80 flex flex-col justify-between transition-all text-center">
+                            <label id="lbl-cur-classes" for="setting-cur-classes" class="block text-xs font-black text-emerald-900 mb-1.5 text-center">올해 학급 수</label>
+                            <select id="setting-cur-classes" style="text-align-last: center;"
+                                    class="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center">
+                                <option value="0" id="opt-cur-classes-none" class="hidden">해당 없음</option>
+                                <option value="1">1개 반</option>
+                                <option value="2" selected>2개 반</option>
+                                <option value="3">3개 반</option>
+                                <option value="4">4개 반</option>
+                                <option value="5">5개 반</option>
+                                <option value="6">6개 반</option>
+                                <option value="7">7개 반</option>
+                                <option value="8">8개 반</option>
+                                <option value="9">9개 반</option>
+                                <option value="10">10개 반</option>
+                                <option value="11">11개 반</option>
+                                <option value="12">12개 반</option>
+                                <option value="13">13개 반</option>
+                                <option value="14">14개 반</option>
+                                <option value="15">15개 반</option>
+                            </select>
+                        </div>
+
+                        <!-- 진급 학년 학급 수 -->
+                        <div class="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/80 flex flex-col justify-between text-center">
+                            <label for="setting-next-classes" class="block text-xs font-black text-amber-900 mb-1.5 text-center">신설 학급 수</label>
+                            <select id="setting-next-classes" style="text-align-last: center;"
+                                    class="w-full px-3 py-2 rounded-xl border border-amber-300 bg-white font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 text-center">
+                                <option value="1">1개 반</option>
+                                <option value="2" selected>2개 반</option>
+                                <option value="3">3개 반</option>
+                                <option value="4">4개 반</option>
+                                <option value="5">5개 반</option>
+                                <option value="6">6개 반</option>
+                                <option value="7">7개 반</option>
+                                <option value="8">8개 반</option>
+                                <option value="9">9개 반</option>
+                                <option value="10">10개 반</option>
+                                <option value="11">11개 반</option>
+                                <option value="12">12개 반</option>
+                                <option value="13">13개 반</option>
+                                <option value="14">14개 반</option>
+                                <option value="15">15개 반</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div class="flex flex-col items-end gap-1.5 pt-3 border-t border-slate-100">
+                        <button type="button" onclick="saveSettings(true)"
+                                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-500/25 active:scale-95 transition-all">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>환경 설정 저장</span>
+                        </button>
+                        <div class="flex items-start gap-1 text-[12px] font-bold text-rose-600 tracking-tight">
+                            <span class="shrink-0">*</span>
+                            <span class="flex-1">주의: 버튼을 클릭하면 모든 데이터가 초기화 됩니다.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 3: 반편성용 학생카드 -->
+            <section id="view-cards" class="tab-view hidden space-y-6">
+                <!-- Hidden file inputs -->
+                <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+                <input type="file" id="freshman-file-input" accept=".xlsx, .xls" class="hidden" onchange="handleFreshmanExcelUpload(event)">
+
+                <!-- Guide boxes: 333 layout -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- Left: 신입생 guide box -->
+                    <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between space-y-4">
+                        <div class="space-y-3.5">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-circle-info text-emerald-600 text-lg"></i>
+                                <h3 class="text-base font-extrabold text-slate-900">신입생</h3>
+                            </div>
+                            <div class="p-4 rounded-2xl border border-slate-200 bg-white space-y-2.5 text-sm font-bold text-slate-700">
+                                <div>
+                                    <button type="button" onclick="downloadFreshmanTemplate()" class="hover:text-blue-600 hover:underline flex items-center gap-1.5 text-slate-800 font-extrabold text-sm">
+                                        <span>1. 신입생 학생명렬표 엑셀 파일 다운받기</span>
+                                        <i class="fa-solid fa-download text-emerald-600"></i>
+                                    </button>
+                                </div>
+                                <div class="text-slate-800 text-sm">2. 전체 신입생의 성명, 성별 입력하기</div>
+                                <div class="text-slate-800 text-sm">3. 신입생 학생명렬표 엑셀 파일 불러오기</div>
+                            </div>
+                            <div class="space-y-1 text-xs">
+                                <div class="flex items-start gap-1 font-bold text-slate-700">
+                                    <span class="text-rose-500 font-black">※</span>
+                                    <span><strong class="text-rose-500 font-black">동명이인</strong> 신입생의 경우 이름 옆에 생년월일을 씁니다.</span>
+                                </div>
+                                <div class="pl-4 text-slate-500 font-semibold">
+                                    예) 홍길동<span class="text-rose-500 font-bold">(0527)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="document.getElementById('freshman-file-input').click()"
+                                class="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-extrabold text-sm shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all">
+                            <i class="fa-solid fa-cloud-arrow-up text-base"></i>
+                            <span>신입생 학생명렬표 엑셀 파일 불러오기</span>
+                        </button>
+                    </div>
+
+                    <!-- Right: 1-5학년 guide box -->
+                    <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between space-y-4">
+                        <div class="space-y-3.5">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-circle-info text-blue-600 text-lg"></i>
+                                <h3 class="text-base font-extrabold text-slate-900">1-5학년</h3>
+                            </div>
+                            <div class="p-4 rounded-2xl border border-slate-200 bg-white space-y-2.5 text-sm font-bold text-slate-700">
+                                <div>
+                                    <span class="text-slate-800 font-extrabold text-sm">1. NEIS 학생명렬표 엑셀 파일 다운받기</span>
+                                    <div class="pl-4 text-slate-500 text-[13px] font-semibold mt-1 leading-relaxed">
+                                        학적 &gt; 기본학적관리 &gt; 명렬표 출력 &gt; 학년선택 &gt; 조회 &gt;<br>
+                                        <span class="text-rose-600 font-bold">명렬표내용(성별 추가)선택</span> &gt; 추가 &gt; 선택 &gt; 엑셀 내려받기
+                                    </div>
+                                </div>
+                                <div class="text-slate-800 font-extrabold text-sm">2. NEIS 학생명렬표 엑셀 파일 불러오기</div>
+                            </div>
+                            <div class="flex items-start gap-1 text-xs font-bold text-slate-700">
+                                <span class="font-black text-slate-400">※</span>
+                                <span>엑셀 파일 내 '반', '번호', '성명', '성별' 열이 포함되어 있어야 합니다.</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="confirmReloadExcel()"
+                                    class="flex-1 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-extrabold text-sm shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all">
+                                <i class="fa-solid fa-cloud-arrow-up text-base"></i>
+                                <span>NEIS 학생명렬표 엑셀 파일 불러오기</span>
+                            </button>
+                            <button type="button" onclick="loadSampleData()"
+                                    class="px-4 py-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs">
+                                <i class="fa-solid fa-wand-magic-sparkles text-amber-600"></i>
+                                <span>샘플로 연습하기</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty Placeholder with Hanging Indent Bullet List -->
+                <div id="cards-empty-placeholder" class="bg-white rounded-3xl border border-slate-200 p-8 shadow-xs space-y-4">
+                    <div class="p-6 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3.5">
+                        <div class="flex items-center gap-2 text-base font-extrabold text-slate-900 border-b border-slate-200 pb-2.5">
+                            <i class="fa-solid fa-circle-info text-rose-500"></i>
+                            <span>반편성용 학생카드 사용 방법 안내</span>
+                        </div>
+                        <div class="text-sm text-slate-700 space-y-2.5 leading-relaxed">
+                            <div class="flex items-start gap-1.5">
+                                <span class="shrink-0 font-black text-slate-800">*</span>
+                                <span class="flex-1">엑셀 파일 데이터에 기반하여 학생카드가 만들어 집니다.</span>
+                            </div>
+                            <div class="flex items-start gap-1.5">
+                                <span class="shrink-0 font-black text-slate-800">*</span>
+                                <span class="flex-1">전학 등의 사유로 빠져야 하는 학생의 카드는 삭제합니다.</span>
+                            </div>
+                            <div class="flex items-start gap-1.5">
+                                <span class="shrink-0 font-black text-slate-800">*</span>
+                                <span class="flex-1">전입 등의 사유로 추가해야 하는 학생의 카드를 추가합니다.</span>
+                            </div>
+                            <div class="flex items-start gap-1.5">
+                                <span class="shrink-0 font-black text-slate-800">*</span>
+                                <span class="flex-1">학생카드를 인쇄하여 자른 후 학생카드를 활용하여 반편성을 실시합니다.</span>
+                            </div>
+                            <div class="flex items-start gap-1.5">
+                                <span class="shrink-0 font-black text-slate-800">*</span>
+                                <span class="flex-1">1학년은 신입생 입학원서를 활용하여 반편성을 실시합니다.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rendered Cards Container -->
+                <div id="cards-rendered-content" class="space-y-6 hidden"></div>
+            </section>
+
+            <!-- View 4: 반편성 보드 -->
+            <section id="view-board" class="tab-view hidden space-y-5">
+                <div class="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200 shadow-xs space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-chalkboard-user"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-black text-slate-900 tracking-tight">반편성 보드</h2>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="resetAllAssignments()"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-all">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <span>배정 전체 초기화</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Board Two-Column Layout: Left (Unassigned) + Right (Classes) -->
+                    <div class="flex flex-col lg:flex-row gap-5 items-start">
+                        <!-- Left: Unassigned Container -->
+                        <div class="w-full lg:w-48 shrink-0 bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2.5 lg:sticky lg:top-20">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                    <h3 class="text-xs font-black text-slate-800">미배정 명단</h3>
+                                    <span id="board-unassigned-badge" class="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-extrabold text-[10px]">0명</span>
+                                </div>
+                            </div>
+                            <p class="text-[10px] font-bold text-slate-400">오른쪽 반으로 드래그</p>
+                            <div id="board-drop-unassigned" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '')"
+                                 class="content-start auto-rows-max grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1.5 p-2 rounded-xl border border-dashed border-slate-300 bg-white min-h-[160px] lg:min-h-[480px] max-h-[620px] overflow-y-auto">
+                            </div>
+                        </div>
+
+                        <!-- Right: Classes Assignment Container -->
+                        <div class="flex-1 w-full min-w-0">
+                            <div id="board-classes-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 5: 내년 진급반 명단 -->
+            <section id="view-next-roster" class="tab-view hidden space-y-5">
+                <div class="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200 shadow-xs space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-table-list"></i>
+                            </div>
+                            <div>
+                                <h2 id="title-next-roster-heading" class="text-xl font-black text-slate-900 tracking-tight">내년 진급반 명단</h2>
+                                <p id="roster-nextclass-stat" class="text-xs text-slate-500 font-bold mt-0.5">재적인원: 남 0명, 여 0명 (계 0명)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="printSelectedNewClassRoster()"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all">
+                                <i class="fa-solid fa-print"></i>
+                                <span>현재 반 인쇄</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Class Filter Buttons -->
+                    <div id="roster-nextclass-filters" class="flex flex-wrap items-center gap-2"></div>
+
+                    <!-- Table -->
+                    <div class="overflow-x-auto rounded-2xl border border-slate-200">
+                        <table class="w-full text-center border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 font-extrabold border-b border-slate-200">
+                                    <th class="py-2.5 px-2 border-r border-slate-200 w-12">번호</th>
+                                    <th class="py-2.5 px-3 border-r border-slate-200 w-28">성명</th>
+                                    <th class="py-2.5 px-2 border-r border-slate-200 w-14">성별</th>
+                                    <th class="py-2.5 px-2 border-r border-slate-200 w-20">현재 반</th>
+                                    <th class="py-2.5 px-2 border-r border-slate-200 w-20">현재 번호</th>
+                                    <th class="py-2.5 px-4 text-left">비고 (항목 빠른 선택 및 직접 입력)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="next-roster-tbody" class="divide-y divide-slate-200 font-bold text-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 6: 올해 반편성 명단 -->
+            <section id="view-cur-roster" class="tab-view hidden space-y-5">
+                <div class="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200 shadow-xs space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                            </div>
+                            <div>
+                                <h2 id="title-cur-roster-heading" class="text-xl font-black text-slate-900 tracking-tight">올해 학급별 반편성 명단</h2>
+                                <p id="cur-roster-class-stat" class="text-xs text-slate-500 font-bold mt-0.5">재적인원: 남 0명, 여 0명 (계 0명)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="printSelectedCurClassRoster()"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs shadow-md shadow-purple-500/20 active:scale-95 transition-all">
+                                <i class="fa-solid fa-print"></i>
+                                <span>현재 반 인쇄</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Class Filter Buttons -->
+                    <div id="cur-roster-class-filters" class="flex flex-wrap items-center gap-2"></div>
+
+                    <!-- Table -->
+                    <div class="overflow-x-auto rounded-2xl border border-slate-200">
+                        <table class="w-full text-center border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 font-extrabold border-b border-slate-200">
+                                    <th class="py-2.5 px-2 border-r border-slate-200 w-20">현재 반</th>
+                                    <th class="py-2.5 px-2 border-r border-slate-200 w-16">현재 번호</th>
+                                    <th class="py-2.5 px-3 border-r border-slate-200 w-28">성명</th>
+                                    <th class="py-2.5 px-2 border-r border-slate-200 w-14">성별</th>
+                                    <th class="py-2.5 px-2 border-r border-slate-200 w-24">진급 반</th>
+                                    <th class="py-2.5 px-4 text-center">비고</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cur-roster-tbody" class="divide-y divide-slate-200 font-bold text-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 7: 반편성 통계표 -->
+            <section id="view-stats" class="tab-view hidden space-y-6">
+                <div class="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-chart-pie"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-black text-slate-900 tracking-tight">반편성 통계표</h2>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="printStatsReport()"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all">
+                                <i class="fa-solid fa-print"></i>
+                                <span>반편성 통계표 인쇄</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+                        <div class="p-3.5 rounded-2xl bg-blue-50 border border-blue-200">
+                            <div class="text-[11px] font-bold text-blue-700 mb-1">내년 진급반 수</div>
+                            <div id="stat-next-classes-count" class="text-lg font-black text-blue-900">0개 반</div>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                            <div class="text-[11px] font-bold text-emerald-700 mb-1">올해 학급 수</div>
+                            <div id="stat-cur-classes-count" class="text-lg font-black text-emerald-900">0개 반</div>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-slate-100 border border-slate-200">
+                            <div class="text-[11px] font-bold text-slate-700 mb-1">전체 학생 수</div>
+                            <div id="stat-total-count" class="text-lg font-black text-slate-900">0명</div>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-sky-50 border border-sky-200">
+                            <div class="text-[11px] font-bold text-sky-700 mb-1">남학생 총 수</div>
+                            <div id="stat-male-count" class="text-lg font-black text-blue-700">0명</div>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200">
+                            <div class="text-[11px] font-bold text-rose-700 mb-1">여학생 총 수</div>
+                            <div id="stat-female-count" class="text-lg font-black text-rose-700">0명</div>
+                        </div>
+                    </div>
+
+                    <!-- Next Year Assignment Table -->
+                    <div class="space-y-2.5">
+                        <h3 id="stat-table-title" class="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"></span>
+                            <span>진급 학년 학급별 배정 통계표</span>
+                        </h3>
+                        <div class="overflow-x-auto rounded-2xl border border-slate-200">
+                            <table class="w-full text-center border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-700 font-extrabold border-b border-slate-200">
+                                        <th class="py-2.5 px-3 border-r border-slate-200 w-28">진급 학급</th>
+                                        <th class="py-2.5 px-3 border-r border-slate-200 w-24 text-blue-700">남학생</th>
+                                        <th class="py-2.5 px-3 border-r border-slate-200 w-24 text-rose-700">여학생</th>
+                                        <th class="py-2.5 px-3 border-r border-slate-200 w-24">합계</th>
+                                        <th class="py-2.5 px-3">성비 (남 : 여)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stats-tbody" class="divide-y divide-slate-200 font-bold text-slate-800"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Current Year Assignment Table -->
+                    <div id="stat-cur-table-wrapper" class="space-y-2.5">
+                        <h3 id="stat-cur-table-title" class="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block"></span>
+                            <span>현재 학년 학급별 배정 통계표</span>
+                        </h3>
+                        <div class="overflow-x-auto rounded-2xl border border-slate-200">
+                            <table class="w-full text-center border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-700 font-extrabold border-b border-slate-200">
+                                        <th class="py-2.5 px-3 border-r border-slate-200 w-28">현재 학급</th>
+                                        <th class="py-2.5 px-3 border-r border-slate-200 w-24 text-blue-700">남학생</th>
+                                        <th class="py-2.5 px-3 border-r border-slate-200 w-24 text-rose-700">여학생</th>
+                                        <th class="py-2.5 px-3 border-r border-slate-200 w-24">합계</th>
+                                        <th class="py-2.5 px-3">성비 (남 : 여)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stats-cur-tbody" class="divide-y divide-slate-200 font-bold text-slate-800"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Backup / Restore Modal -->
+    <div id="backup-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-black text-slate-900">데이터 백업 및 복원</h3>
+                <button type="button" onclick="closeBackupModal()" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div class="p-5 rounded-2xl bg-blue-50 border border-blue-200 space-y-2.5">
+                    <h4 class="font-extrabold text-base text-blue-900">현재 데이터 파일로 백업</h4>
+                    <p class="text-sm font-medium text-blue-700 leading-relaxed">작업 중인 전체 데이터(학생 명단 및 배정 현황)를 JSON 파일로 다운로드합니다.</p>
+                    <button type="button" onclick="exportBackupJSON()" class="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700">백업 파일 다운로드</button>
+                </div>
+                <div class="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2.5">
+                    <h4 class="font-extrabold text-base text-emerald-900">백업 파일에서 데이터 복원</h4>
+                    <p class="text-sm font-medium text-emerald-700 leading-relaxed">이전에 다운로드한 백업 JSON 파일을 업로드하여 상태를 복원합니다.</p>
+                    <input type="file" id="backup-file-input" accept=".json" class="hidden" onchange="importBackupJSON(event)">
+                    <button type="button" onclick="document.getElementById('backup-file-input').click()" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700">백업 파일 불러오기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+            <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-xl font-black">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h4 class="text-base font-black text-slate-900" id="confirm-modal-title">확인</h4>
+            <p class="text-xs text-slate-600" id="confirm-modal-desc">작업을 진행하시겠습니까?</p>
+            <div class="flex items-center justify-center gap-2 pt-2">
+                <button type="button" id="confirm-btn-cancel" class="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs hover:bg-slate-200">취소</button>
+                <button type="button" id="confirm-btn-ok" class="px-5 py-2.5 rounded-xl bg-rose-600 text-white font-extrabold text-xs hover:bg-rose-700 shadow-md">진행</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-msg" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-lg flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-text">메시지</span>
+    </div>
+
+<script>
+    /* State Definition */
+    const defaultYear = new Date().getFullYear() + 1;
+
+    /* 비고 빠른 선택 프리셋 항목 정의 */
+    const NOTE_PRESET_ITEMS = [
+        "전퇴예정",
+        "전교임원",
+        "방송부",
+        "기초학습부진",
+        "다문화",
+        "특수",
+        "쌍생아",
+        "지원대상",
+        "부적응"
+    ];
+
+    const appState = {
+        school: "빛여울초",
+        year: defaultYear,
+        curGrade: 2,
+        curClassesCount: 2,
+        nextGrade: 3,
+        nextClassesCount: 2,
+        students: [], // { id, originalClass, originalNumber, name, gender, nextClass, notes }
+        currentTab: "instructions",
+        filterNextClass: "1",
+        filterCurRosterClass: "1",
+        draggedStudentId: null,
+        editingCardId: null,
+        activeNoteDropdownId: null,
+        confirmedClasses: {} // { classNumber: boolean }
+    };
+
+    const STORAGE_KEY = "ELEM_CLASS_ASSIGNMENT_DATA_V2";
+
+    /* 임시 반 표기 (가반, 나반, 다반...) 변환 유틸리티 */
+    function getClassLabel(classNum) {
+        const num = parseInt(classNum, 10);
+        const letters = ["가", "나", "다", "라", "마", "바", "사", "아", "자", "차", "카", "타", "파", "하", "거"];
+        if (num >= 1 && num <= letters.length) {
+            return letters[num - 1] + "반";
+        }
+        return `${num}반`;
+    }
+
+    /* Student Sorting Utility: 반 및 번호 오름차순 정렬 */
+    function sortStudents() {
+        if (!appState.students || !Array.isArray(appState.students)) return;
+        appState.students.sort((a, b) => {
+            const classA = parseInt(a.originalClass, 10) || 0;
+            const classB = parseInt(b.originalClass, 10) || 0;
+            if (classA !== classB) return classA - classB;
+            const numA = parseInt(a.originalNumber, 10) || 0;
+            const numB = parseInt(b.originalNumber, 10) || 0;
+            return numA - numB;
+        });
+    }
+
+    function saveToLocalStorage() {
+        try {
+            const dataToSave = {
+                school: appState.school,
+                year: appState.year,
+                curGrade: appState.curGrade,
+                curClassesCount: appState.curClassesCount,
+                nextGrade: appState.nextGrade,
+                nextClassesCount: appState.nextClassesCount,
+                students: appState.students,
+                confirmedClasses: appState.confirmedClasses || {}
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        } catch (e) {
+            console.error("Local storage error:", e);
+        }
+    }
+
+    function loadFromLocalStorage() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (!saved) return false;
+            const data = JSON.parse(saved);
+            if (data && Array.isArray(data.students)) {
+                appState.school = data.school || "빛여울초";
+                appState.year = data.year || defaultYear;
+                appState.curGrade = (data.curGrade !== undefined && data.curGrade !== null) ? data.curGrade : 2;
+                appState.curClassesCount = data.curClassesCount || 2;
+                appState.nextGrade = appState.curGrade === 0 ? 1 : Math.min(appState.curGrade + 1, 6);
+                appState.nextClassesCount = data.nextClassesCount || 2;
+                appState.students = data.students || [];
+                appState.confirmedClasses = data.confirmedClasses || {};
+                sortStudents();
+
+                // sync input elements with safe null-checks
+                const elSchool = document.getElementById("setting-school");
+                if (elSchool) elSchool.value = appState.school;
+                const elYear = document.getElementById("setting-year");
+                if (elYear) elYear.value = appState.year;
+                const elCurGrade = document.getElementById("setting-cur-grade");
+                if (elCurGrade) elCurGrade.value = appState.curGrade;
+                const elCurClasses = document.getElementById("setting-cur-classes");
+                if (elCurClasses) elCurClasses.value = appState.curClassesCount;
+                const elNextClasses = document.getElementById("setting-next-classes");
+                if (elNextClasses) elNextClasses.value = appState.nextClassesCount;
+                return true;
+            }
+        } catch (e) {
+            console.error("Failed to parse local storage data:", e);
+        }
+        return false;
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById("toast-msg");
+        const txt = document.getElementById("toast-text");
+        txt.textContent = msg;
+        toast.classList.remove("translate-y-20", "opacity-0");
+        setTimeout(() => {
+            toast.classList.add("translate-y-20", "opacity-0");
+        }, 2600);
+    }
+
+    function showCustomConfirm(title, desc, onConfirm) {
+        const modal = document.getElementById("confirm-modal");
+        document.getElementById("confirm-modal-title").textContent = title;
+        document.getElementById("confirm-modal-desc").textContent = desc;
+
+        const btnOk = document.getElementById("confirm-btn-ok");
+        const btnCancel = document.getElementById("confirm-btn-cancel");
+
+        const cleanup = () => {
+            modal.classList.add("hidden");
+            btnOk.onclick = null;
+            btnCancel.onclick = null;
+        };
+
+        btnOk.onclick = () => {
+            cleanup();
+            if (typeof onConfirm === "function") onConfirm();
+        };
+
+        btnCancel.onclick = () => cleanup();
+        modal.classList.remove("hidden");
+    }
+
+    function switchTab(tabName) {
+        appState.currentTab = tabName;
+        document.querySelectorAll(".tab-view").forEach(el => el.classList.add("hidden"));
+        document.querySelectorAll(".nav-item").forEach(btn => {
+            btn.classList.remove("bg-blue-50/80", "text-blue-600", "font-black");
+            btn.classList.add("text-slate-600", "font-bold");
+        });
+
+        const activeView = document.getElementById(`view-${tabName}`);
+        if (activeView) activeView.classList.remove("hidden");
+
+        const activeNavBtn = document.getElementById(`nav-btn-${tabName}`);
+        if (activeNavBtn) {
+            activeNavBtn.classList.add("bg-blue-50/80", "text-blue-600", "font-black");
+            activeNavBtn.classList.remove("text-slate-600");
+        }
+
+        // View specific refresh
+        if (tabName === "cards") renderStudentCards();
+        if (tabName === "board") renderBoardView();
+        if (tabName === "next-roster") renderNextRosterView();
+        if (tabName === "cur-roster") renderCurRosterView();
+        if (tabName === "stats") renderStatsView();
+
+        updateHeaderSummaries();
+    }
+
+    function handleCurrentGradeChange() {
+        const gradeSelect = document.getElementById("setting-cur-grade");
+        const curClassesSelect = document.getElementById("setting-cur-classes");
+        const curClassesBox = document.getElementById("box-cur-classes");
+        const lblCurClasses = document.getElementById("lbl-cur-classes");
+        const optNone = document.getElementById("opt-cur-classes-none");
+
+        if (!gradeSelect || !curClassesSelect) return;
+
+        const gradeVal = parseInt(gradeSelect.value);
+
+        if (gradeVal === 0) {
+            if (optNone) optNone.classList.remove("hidden");
+            curClassesSelect.value = "0";
+            curClassesSelect.disabled = true;
+            curClassesSelect.classList.add("bg-slate-100", "text-slate-400", "cursor-not-allowed", "border-slate-300");
+            curClassesSelect.classList.remove("bg-white", "text-slate-800", "border-emerald-200");
+            if (curClassesBox) {
+                curClassesBox.classList.add("opacity-60", "bg-slate-100/80", "border-slate-200");
+                curClassesBox.classList.remove("bg-emerald-50/80", "border-emerald-200/80");
+            }
+            if (lblCurClasses) {
+                lblCurClasses.textContent = "올해 학급 수 (해당 없음)";
+                lblCurClasses.classList.add("text-slate-500");
+                lblCurClasses.classList.remove("text-emerald-900");
+            }
+        } else {
+            if (optNone) optNone.classList.add("hidden");
+            if (curClassesSelect.value === "0") {
+                curClassesSelect.value = "2";
+            }
+            curClassesSelect.disabled = false;
+            curClassesSelect.classList.remove("bg-slate-100", "text-slate-400", "cursor-not-allowed", "border-slate-300");
+            curClassesSelect.classList.add("bg-white", "text-slate-800", "border-emerald-200");
+            if (curClassesBox) {
+                curClassesBox.classList.remove("opacity-60", "bg-slate-100/80", "border-slate-200");
+                curClassesBox.classList.add("bg-emerald-50/80", "border-emerald-200/80");
+            }
+            if (lblCurClasses) {
+                lblCurClasses.textContent = "올해 학급 수";
+                lblCurClasses.classList.remove("text-slate-500");
+                lblCurClasses.classList.add("text-emerald-900");
+            }
+        }
+    }
+
+    function updateDynamicLabels() {
+        const isNewStudent = appState.curGrade === 0;
+        const curLabel = isNewStudent ? "신입생" : `올해 ${appState.curGrade}학년`;
+
+        const headerBadge = document.getElementById("header-school-badge");
+        if (headerBadge) {
+            headerBadge.textContent = `${appState.school} ${appState.year}학년도 ${appState.nextGrade}학년 진급`;
+        }
+
+        // Sidebar Dynamic Titles
+        const navNext = document.getElementById("nav-title-next-roster");
+        if (navNext) navNext.textContent = `내년 ${appState.nextGrade}학년 진급반 명단`;
+
+        const navCur = document.getElementById("nav-title-cur-roster");
+        if (navCur) navCur.textContent = isNewStudent ? `신입생 반편성 명단` : `${curLabel} 반편성 명단`;
+
+        // Section Headings
+        const rosterHead = document.getElementById("title-next-roster-heading");
+        if (rosterHead) rosterHead.textContent = `내년 ${appState.nextGrade}학년 진급반 명단`;
+
+        const curRosterHead = document.getElementById("title-cur-roster-heading");
+        if (curRosterHead) curRosterHead.textContent = isNewStudent ? `신입생 반편성 명단` : `${curLabel} 반편성 명단`;
+    }
+
+    function saveSettings(resetStudents = true) {
+        appState.school = document.getElementById("setting-school").value.trim() || "초등학교";
+        appState.year = parseInt(document.getElementById("setting-year").value) || defaultYear;
+        const rawCurGrade = parseInt(document.getElementById("setting-cur-grade").value);
+        appState.curGrade = isNaN(rawCurGrade) ? 2 : rawCurGrade;
+
+        if (appState.curGrade === 0) {
+            appState.curClassesCount = 1;
+        } else {
+            appState.curClassesCount = parseInt(document.getElementById("setting-cur-classes").value) || 2;
+        }
+
+        appState.nextGrade = appState.curGrade === 0 ? 1 : Math.min(appState.curGrade + 1, 6);
+        appState.nextClassesCount = parseInt(document.getElementById("setting-next-classes").value) || 2;
+
+        if (resetStudents) {
+            appState.students = [];
+            appState.confirmedClasses = {};
+            appState.filterNextClass = "1";
+            appState.filterCurRosterClass = "1";
+            appState.draggedStudentId = null;
+            appState.editingCardId = null;
+        }
+
+        saveToLocalStorage();
+        updateDynamicLabels();
+        updateHeaderSummaries();
+        showToast(resetStudents ? "환경 설정이 저장되었으며 모든 데이터가 초기화되었습니다." : "학급편성 환경 설정이 저장되었습니다.");
+        renderStudentCards();
+    }
+
+    function confirmResetSettings() {
+        showCustomConfirm(
+            "환경 설정 및 데이터 초기화",
+            "환경 설정을 저장하면서 등록된 모든 학생 정보 및 배정 결과를 완전히 초기화하시겠습니까?",
+            () => saveSettings(true)
+        );
+    }
+
+    function loadSampleData() {
+        const samplePool = [
+            // 우리나라 남자 위인 10명
+            { name: "세종대왕", gender: "남", notes: "" },
+            { name: "이순신", gender: "남", notes: "" },
+            { name: "안중근", gender: "남", notes: "" },
+            { name: "정약용", gender: "남", notes: "" },
+            { name: "김구", gender: "남", notes: "" },
+            { name: "을지문덕", gender: "남", notes: "" },
+            { name: "강감찬", gender: "남", notes: "" },
+            { name: "장영실", gender: "남", notes: "" },
+            { name: "윤봉길", gender: "남", notes: "" },
+            { name: "이황", gender: "남", notes: "" },
+
+            // 우리나라 여자 위인 10명
+            { name: "유관순", gender: "여", notes: "" },
+            { name: "신사임당", gender: "여", notes: "" },
+            { name: "허난설헌", gender: "여", notes: "" },
+            { name: "김만덕", gender: "여", notes: "" },
+            { name: "선덕여왕", gender: "여", notes: "" },
+            { name: "남자현", gender: "여", notes: "" },
+            { name: "나혜석", gender: "여", notes: "" },
+            { name: "소서노", gender: "여", notes: "" },
+            { name: "원경왕후", gender: "여", notes: "" },
+            { name: "박차정", gender: "여", notes: "" },
+
+            // 최근 우리나라 유명 남자 연예인 5명
+            { name: "유재석", gender: "남", notes: "" },
+            { name: "차은우", gender: "남", notes: "" },
+            { name: "임영웅", gender: "남", notes: "" },
+            { name: "변우석", gender: "남", notes: "" },
+            { name: "박보검", gender: "남", notes: "" },
+
+            // 최근 우리나라 유명 여자 연예인 5명
+            { name: "장원영", gender: "여", notes: "" },
+            { name: "아이유", gender: "여", notes: "" },
+            { name: "카리나", gender: "여", notes: "" },
+            { name: "안유진", gender: "여", notes: "" },
+            { name: "김지원", gender: "여", notes: "" }
+        ];
+
+        const classesCount = Math.max(1, appState.curClassesCount || 2);
+        const classBuckets = {};
+        for (let c = 1; c <= classesCount; c++) {
+            classBuckets[c] = [];
+        }
+
+        // 남학생과 여학생을 반별로 균등하게 분배
+        const maleStudents = samplePool.filter(s => s.gender === "남");
+        const femaleStudents = samplePool.filter(s => s.gender === "여");
+
+        maleStudents.forEach((st, idx) => {
+            const assignedClass = (idx % classesCount) + 1;
+            classBuckets[assignedClass].push({ ...st, originalClass: assignedClass });
+        });
+
+        femaleStudents.forEach((st, idx) => {
+            const assignedClass = classesCount === 2 ? ((idx + 1) % classesCount) + 1 : ((idx % classesCount) + 1);
+            classBuckets[assignedClass].push({ ...st, originalClass: assignedClass });
+        });
+
+        // 각 반별로 가나다순 정렬 후 번호 부여하되, 1반 1번(강감찬)과 2반 10번은 결번으로 제외 (번호 당김 없음)
+        const demo = [];
+        for (let c = 1; c <= classesCount; c++) {
+            classBuckets[c].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+            classBuckets[c].forEach((st, idx) => {
+                const assignedNum = idx + 1;
+
+                // 1반 1번(강감찬) 결번: 카드 생성 안 함, 2번부터 학생 시작
+                if (c === 1 && (assignedNum === 1 || st.name === "강감찬")) {
+                    return;
+                }
+
+                // 2반 10번 결번: 카드 생성 안 함, 11번 이후 번호는 당기지 않고 유지
+                if (c === 2 && assignedNum === 10) {
+                    return;
+                }
+
+                demo.push({
+                    id: `demo-${c}-${assignedNum}`,
+                    originalClass: c,
+                    originalNumber: assignedNum,
+                    name: st.name,
+                    gender: st.gender,
+                    nextClass: "",
+                    notes: ""
+                });
+            });
+        }
+
+        appState.students = demo;
+        sortStudents();
+        saveToLocalStorage();
+        showToast("연습용 샘플 데이터가 생성되었습니다. (1반 1번 강감찬 결번, 2반 10번 결번)");
+        updateHeaderSummaries();
+        renderStudentCards();
+    }
+
+    /* NEIS 및 일반 학생명렬표 엑셀 불러오기 */
+    function handleExcelUpload(event, isFreshman = false) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                if (!jsonData || jsonData.length === 0) {
+                    showToast("엑셀 파일에 데이터가 없습니다.");
+                    return;
+                }
+
+                let headerRowIndex = -1;
+                let classCol = -1, numCol = -1, nameCol = -1, genderCol = -1;
+
+                for (let r = 0; r < Math.min(jsonData.length, 15); r++) {
+                    const row = jsonData[r];
+                    if (!Array.isArray(row)) continue;
+                    for (let c = 0; c < row.length; c++) {
+                        const cell = String(row[c] || "").replace(/\s+/g, "");
+                        if (cell === "반") classCol = c;
+                        else if (cell === "번호") numCol = c;
+                        else if (cell === "성명" || cell === "이름") nameCol = c;
+                        else if (cell === "성별") genderCol = c;
+                    }
+                    if (classCol !== -1 && numCol !== -1 && nameCol !== -1) {
+                        headerRowIndex = r;
+                        break;
+                    }
+                }
+
+                if (headerRowIndex === -1) {
+                    showToast("엑셀에서 '반', '번호', '성명' 열을 찾을 수 없습니다.");
+                    return;
+                }
+
+                const parsedStudents = [];
+                let detectedMaxClass = 1;
+                for (let r = headerRowIndex + 1; r < jsonData.length; r++) {
+                    const row = jsonData[r];
+                    if (!row || !row[nameCol]) continue;
+
+                    const rawClassDigits = String(row[classCol] || "").replace(/[^0-9]/g, "");
+                    let rawClass = parseInt(rawClassDigits, 10);
+                    if (isNaN(rawClass) || rawClass <= 0) {
+                        rawClass = 1;
+                    }
+                    if (rawClass > detectedMaxClass) detectedMaxClass = rawClass;
+
+                    const rawNumDigits = String(row[numCol] || "").replace(/[^0-9]/g, "");
+                    let rawNum = parseInt(rawNumDigits, 10);
+                    if (isNaN(rawNum) || rawNum <= 0) {
+                        rawNum = parsedStudents.length + 1;
+                    }
+
+                    const rawName = String(row[nameCol]).trim();
+                    let rawGender = "남";
+                    if (genderCol !== -1 && row[genderCol]) {
+                        const gStr = String(row[genderCol]).trim();
+                        if (gStr.includes("여") || gStr === "F" || gStr === "f" || gStr === "2") rawGender = "여";
+                    }
+
+                    if (rawName) {
+                        parsedStudents.push({
+                            id: `std-${rawClass}-${rawNum}-${Math.random().toString(36).substr(2, 6)}`,
+                            originalClass: rawClass,
+                            originalNumber: rawNum,
+                            name: rawName,
+                            gender: rawGender,
+                            nextClass: "",
+                            notes: ""
+                        });
+                    }
+                }
+
+                if (parsedStudents.length === 0) {
+                    showToast("추출 가능한 학생 정보가 없습니다.");
+                    return;
+                }
+
+                // 1-5학년인 경우 파일에 감지된 학급 수가 더 크면 환경설정 학급수 자동 보정
+                if (appState.curGrade !== 0 && detectedMaxClass > appState.curClassesCount) {
+                    appState.curClassesCount = detectedMaxClass;
+                    const elCurClasses = document.getElementById("setting-cur-classes");
+                    if (elCurClasses) elCurClasses.value = String(detectedMaxClass);
+                }
+
+                appState.students = parsedStudents;
+                sortStudents();
+                saveToLocalStorage();
+                const prefix = isFreshman ? "신입생" : "NEIS";
+                showToast(`총 ${parsedStudents.length}명의 ${prefix} 학생 명렬을 성공적으로 불러왔습니다.`);
+                updateHeaderSummaries();
+                renderStudentCards();
+            } catch (err) {
+                console.error(err);
+                showToast("엑셀 파일 파싱 중 오류가 발생했습니다.");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        event.target.value = "";
+    }
+
+    /* 신입생 학생명렬표 엑셀 불러오기 핸들러 */
+    function handleFreshmanExcelUpload(event) {
+        // 환경설정이 신입생(0학년)이 아닌 경우 자동으로 신입생 모드로 전환
+        if (appState.curGrade !== 0) {
+            appState.curGrade = 0;
+            appState.curClassesCount = 1;
+            appState.nextGrade = 1;
+
+            const elCurGrade = document.getElementById("setting-cur-grade");
+            if (elCurGrade) elCurGrade.value = "0";
+
+            handleCurrentGradeChange();
+            updateDynamicLabels();
+        }
+        handleExcelUpload(event, true);
+    }
+
+    /* 카드 단독 인쇄 */
+    function printSingleClassCards(cNum) {
+        const classList = appState.students.filter(s => s.originalClass === cNum);
+        if (classList.length === 0) {
+            showToast("인쇄할 학생 카드가 없습니다.");
+            return;
+        }
+        const printWin = window.open("", "_blank");
+        if (!printWin) { showToast("인쇄 팝업이 차단되었습니다."); return; }
+        const cardsHtml = generatePrintCardsHTML(classList, cNum);
+        const title = appState.curGrade === 0 ? "신입생 학생카드" : `${appState.curGrade}학년 ${cNum}반 학생카드`;
+        const docHtml = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>${appState.school} ${title}</title>
+                <style>
+                    @page { size: A4 portrait; margin: 10mm; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", Dotum, sans-serif; margin: 0; padding: 0; }
+                    .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+                </style>
+            </head>
+            <body>
+                <div class="grid-container">${cardsHtml}</div>
+            </body>
+            </html>
+        `;
+        printWin.document.open();
+        printWin.document.write(docHtml);
+        printWin.document.close();
+        setTimeout(() => { printWin.focus(); printWin.print(); }, 350);
+    }
+
+    /* 전체 카드 일괄 인쇄 */
+    function printAllClassCards() {
+        if (appState.students.length === 0) {
+            showToast("인쇄할 학생 카드가 없습니다.");
+            return;
+        }
+        const printWin = window.open("", "_blank");
+        if (!printWin) { showToast("인쇄 팝업이 차단되었습니다."); return; }
+        let allCardsHtml = "";
+        for (let c = 1; c <= appState.curClassesCount; c++) {
+            const classList = appState.students.filter(s => s.originalClass === c);
+            if (classList.length > 0) {
+                allCardsHtml += generatePrintCardsHTML(classList, c);
+            }
+        }
+        const docHtml = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>${appState.school} 학생카드 전체 인쇄</title>
+                <style>
+                    @page { size: A4 portrait; margin: 10mm; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", Dotum, sans-serif; margin: 0; padding: 0; }
+                    .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+                </style>
+            </head>
+            <body>
+                <div class="grid-container">${allCardsHtml}</div>
+            </body>
+            </html>
+        `;
+        printWin.document.open();
+        printWin.document.write(docHtml);
+        printWin.document.close();
+        setTimeout(() => { printWin.focus(); printWin.print(); }, 350);
+    }
+
+    /* 신입생 학생명렬표 양식 엑셀 파일 다운로드 */
+    function downloadFreshmanTemplate() {
+        const wb = XLSX.utils.book_new();
+        const rows = [
+            ["학년", "반", "번호", "성명", "성별"],
+            ["신입", 0, 1, "장원영", "여성"],
+            ["신입", 0, 2, "홍길동(0101)", "남성"],
+            ["신입", 0, 3, "홍길동(0527)", "남성"]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, "신입생명렬표");
+        XLSX.writeFile(wb, "신입생 학생명렬표.xlsx");
+        showToast("'신입생 학생명렬표.xlsx' 파일이 다운로드되었습니다.");
+    }
+
+    function updateHeaderSummaries() {
+        // Keeps state synced
+    }
+
+    /* 엑셀 파일 새로 불러오기 확인 함수 */
+    function confirmReloadExcel() {
+        if (appState.students.length > 0) {
+            showCustomConfirm(
+                "NEIS 학생명렬표 엑셀 새로 불러오기",
+                "새로운 엑셀 파일을 불러오면 기존 학생 카드 및 배정 내용이 새 파일 데이터로 교체됩니다. 계속하시겠습니까?",
+                () => {
+                    document.getElementById('excel-file-input').click();
+                }
+            );
+        } else {
+            document.getElementById('excel-file-input').click();
+        }
+    }
+
+    function renderStudentCards() {
+        const placeholder = document.getElementById("cards-empty-placeholder");
+        const renderedContent = document.getElementById("cards-rendered-content");
+
+        if (!placeholder || !renderedContent) return;
+
+        if (appState.students.length === 0) {
+            placeholder.classList.remove("hidden");
+            renderedContent.classList.add("hidden");
+            renderedContent.innerHTML = "";
+            return;
+        }
+
+        placeholder.classList.add("hidden");
+        renderedContent.classList.remove("hidden");
+
+        const classMap = {};
+        for (let c = 1; c <= appState.curClassesCount; c++) {
+            classMap[c] = [];
+        }
+        appState.students.forEach(st => {
+            if (!classMap[st.originalClass]) classMap[st.originalClass] = [];
+            classMap[st.originalClass].push(st);
+        });
+
+        let html = "";
+        for (let cNum = 1; cNum <= appState.curClassesCount; cNum++) {
+            const list = classMap[cNum] || [];
+            if (list.length === 0) continue;
+            list.sort((a, b) => a.originalNumber - b.originalNumber);
+
+            const totalCount = list.length;
+            const maleCount = list.filter(s => s.gender === "남").length;
+            const femaleCount = list.filter(s => s.gender === "여").length;
+            const gradeTitle = appState.curGrade === 0 ? "신입생" : `${appState.curGrade}학년`;
+
+            html += `
+            <div class="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3.5">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="text-lg font-black text-slate-900 tracking-tight">${gradeTitle} ${cNum}반 학생카드</h3>
+                                <button type="button" onclick="printSingleClassCards(${cNum})" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 text-xs font-black transition-all">
+                                    <i class="fa-solid fa-print"></i>
+                                    <span>${cNum}반 카드 인쇄</span>
+                                </button>
+                                <button type="button" onclick="printAllClassCards()" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-black transition-all">
+                                    <i class="fa-solid fa-layer-group"></i>
+                                    <span>전체 카드 인쇄</span>
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-500 font-semibold mt-1 flex flex-wrap items-center gap-1.5">
+                                <span>재적 <strong class="font-black text-slate-800">${totalCount}명</strong></span>
+                                <span>(남 <strong class="text-blue-600 font-bold">${maleCount}명</strong> · 여 <strong class="text-rose-600 font-bold">${femaleCount}명</strong>)</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            `;
+
+            list.forEach(st => {
+                const isEditing = appState.editingCardId === st.id;
+                const isMale = st.gender === "남";
+                const genderColor = isMale ? "text-blue-600" : "text-rose-600";
+                
+                if (isEditing) {
+                    let nextClassOptions = `<option value="">미배정</option>`;
+                    for (let n = 1; n <= appState.nextClassesCount; n++) {
+                        nextClassOptions += `<option value="${n}" ${st.nextClass === String(n) ? "selected" : ""}>${n}반</option>`;
+                    }
+
+                    html += `
+                        <div class="bg-blue-50/60 rounded-2xl border-2 border-blue-500 shadow-md overflow-hidden flex flex-col justify-between transition-all">
+                            <table class="w-full border-collapse text-center table-fixed">
+                                <thead>
+                                    <tr class="bg-blue-100/70 text-[11px] font-black text-blue-800 border-b border-blue-200">
+                                        <th class="w-[18%] py-1.5 border-r border-blue-200 font-bold">반</th>
+                                        <th class="w-[18%] py-1.5 border-r border-blue-200 font-bold">번호</th>
+                                        <th class="w-[34%] py-1.5 border-r border-blue-200 font-bold">이름</th>
+                                        <th class="w-[15%] py-1.5 border-r border-blue-200 font-bold">성별</th>
+                                        <th class="w-[15%] py-1.5 font-bold">진급반</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="h-20 bg-white">
+                                        <td class="border-r border-slate-200 align-middle px-1 py-1">
+                                            <input id="inline-class-${st.id}" type="number" min="1" max="15" value="${st.originalClass}" class="w-full text-center text-sm font-black border border-slate-300 rounded py-1 focus:ring-2 focus:ring-blue-500">
+                                        </td>
+                                        <td class="border-r border-slate-200 align-middle px-1 py-1">
+                                            <input id="inline-num-${st.id}" type="number" min="1" max="60" value="${st.originalNumber}" class="w-full text-center text-sm font-black border border-slate-300 rounded py-1 focus:ring-2 focus:ring-blue-500">
+                                        </td>
+                                        <td class="border-r border-slate-200 align-middle px-1.5 py-1">
+                                            <input id="inline-name-${st.id}" type="text" value="${st.name}" placeholder="이름" class="w-full text-center text-base font-black border-2 border-blue-400 rounded py-1 focus:ring-2 focus:ring-blue-500 bg-blue-50/20">
+                                        </td>
+                                        <td class="border-r border-slate-200 align-middle px-1 py-1">
+                                            <select id="inline-gender-${st.id}" class="w-full text-center text-xs font-black border border-slate-300 rounded py-1.5 focus:ring-2 focus:ring-blue-500">
+                                                <option value="남" ${st.gender === "남" ? "selected" : ""}>남</option>
+                                                <option value="여" ${st.gender === "여" ? "selected" : ""}>여</option>
+                                            </select>
+                                        </td>
+                                        <td class="align-middle px-1 py-1">
+                                            <select id="inline-next-${st.id}" class="w-full text-center text-xs font-black border border-blue-300 rounded py-1.5 text-blue-700 focus:ring-2 focus:ring-blue-500">
+                                                ${nextClassOptions}
+                                            </select>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="bg-blue-50 px-2.5 py-1.5 border-t border-blue-200 flex items-center justify-end gap-1.5">
+                                <button type="button" onclick="saveInlineCardEdit('${st.id}')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-lg shadow-xs transition-all">
+                                    저장
+                                </button>
+                                <button type="button" onclick="cancelInlineCardEdit()" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-lg transition-all">
+                                    취소
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const nameLen = (st.name || "").length;
+                    let nameClass = "text-[19px] sm:text-[21px] leading-tight";
+                    if (nameLen >= 11) {
+                        nameClass = "text-[11px] sm:text-[12px] leading-tight break-keep";
+                    } else if (nameLen >= 8) {
+                        nameClass = "text-[12px] sm:text-[13px] leading-tight break-keep";
+                    } else if (nameLen >= 5) {
+                        nameClass = "text-[13px] sm:text-[15px] leading-tight break-keep";
+                    } else if (nameLen === 4) {
+                        nameClass = "text-[16px] sm:text-[18px] leading-tight";
+                    }
+
+                    const cardPointer = 'cursor-pointer';
+                    const cardTitle = '클릭하여 바로 수정하기';
+                    const cardClickAction = `onclick="startInlineCardEdit('${st.id}')"`;
+
+                    html += `
+                        <div class="bg-white rounded-2xl border-2 border-slate-300 hover:border-blue-400 hover:shadow-md shadow-xs overflow-hidden flex flex-col justify-between transition-all group">
+                            <table class="w-full border-collapse text-center table-fixed ${cardPointer}" title="${cardTitle}" ${cardClickAction}>
+                                <thead>
+                                    <tr class="bg-slate-50 text-[11px] font-black text-slate-500 border-b border-slate-300">
+                                        <th class="w-[18%] py-1.5 border-r border-slate-200 font-bold">반</th>
+                                        <th class="w-[18%] py-1.5 border-r border-slate-200 font-bold">번호</th>
+                                        <th class="w-[34%] py-1.5 border-r border-slate-200 font-bold">이름</th>
+                                        <th class="w-[15%] py-1.5 border-r border-slate-200 font-bold">성별</th>
+                                        <th class="w-[15%] py-1.5 font-bold">진급반</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="h-20">
+                                        <td class="border-r border-slate-300 align-middle py-1 px-1">
+                                            <div class="font-black text-slate-900 leading-tight">
+                                                <span class="text-xl block font-black">${st.originalClass}</span>
+                                                <span class="text-sm font-bold text-slate-800">반</span>
+                                            </div>
+                                        </td>
+                                        <td class="border-r border-slate-300 align-middle py-1 px-1">
+                                            <div class="font-black text-slate-900 leading-tight">
+                                                <span class="text-xl block font-black">${st.originalNumber}</span>
+                                                <span class="text-sm font-bold text-slate-800">번</span>
+                                            </div>
+                                        </td>
+                                        <td class="border-r border-slate-300 align-middle py-1 px-1">
+                                            <div class="${nameClass} font-black text-slate-900 tracking-tight flex items-center justify-center text-center break-all word-break px-0.5">
+                                                ${st.name}
+                                            </div>
+                                        </td>
+                                        <td class="border-r border-slate-300 align-middle py-1 px-1">
+                                            <span class="text-xl font-black ${genderColor}">${st.gender}</span>
+                                        </td>
+                                        <td class="align-middle py-1 px-1">
+                                            <div class="font-black text-blue-700 leading-tight">
+                                                ${st.nextClass ? `<span class="text-xl block font-black text-blue-600">${st.nextClass}</span>` : `<span class="text-xs block text-slate-300 font-bold">-</span>`}
+                                                <span class="text-sm font-bold text-slate-800">반</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="bg-slate-50 border-t border-slate-200 px-3 py-1 flex items-center justify-end gap-2 text-[11px] text-slate-500">
+                                <button type="button" onclick="startInlineCardEdit('${st.id}')" class="text-blue-600 hover:text-blue-800 font-bold text-[11px]">
+                                    수정
+                                </button>
+                                <span class="text-slate-300">|</span>
+                                <button type="button" onclick="deleteStudent('${st.id}')" class="text-rose-500 hover:text-rose-700 font-bold text-[11px]">
+                                    삭제
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            // 반별 여분 빈 카드 4장 표시
+            const maxExistingNum = list.reduce((max, s) => Math.max(max, s.originalNumber || 0), 0);
+            for (let b = 1; b <= 4; b++) {
+                const autoNum = maxExistingNum + b;
+                let nextClassOptions = `<option value="">미배정</option>`;
+                for (let n = 1; n <= appState.nextClassesCount; n++) {
+                    nextClassOptions += `<option value="${n}">${n}반</option>`;
+                }
+
+                html += `
+                    <div class="bg-slate-50/80 rounded-2xl border-2 border-dashed border-slate-300 shadow-2xs overflow-hidden flex flex-col justify-between hover:border-blue-400 hover:bg-white transition-all group">
+                        <table class="w-full border-collapse text-center table-fixed">
+                            <thead>
+                                <tr class="bg-slate-100 text-[11px] font-black text-slate-500 border-b border-dashed border-slate-300">
+                                    <th class="w-[18%] py-1.5 border-r border-slate-200 font-bold">반</th>
+                                    <th class="w-[18%] py-1.5 border-r border-slate-200 font-bold">번호</th>
+                                    <th class="w-[34%] py-1.5 border-r border-slate-200 font-bold text-blue-700">이름(직접입력)</th>
+                                    <th class="w-[15%] py-1.5 border-r border-slate-200 font-bold">성별</th>
+                                    <th class="w-[15%] py-1.5 font-bold">진급반</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="h-20">
+                                    <td class="border-r border-dashed border-slate-300 align-middle px-1 py-1">
+                                        <div class="font-bold text-slate-600 leading-tight">
+                                            <span class="text-lg block font-black">${cNum}</span>
+                                            <span class="text-xs font-semibold">반</span>
+                                        </div>
+                                    </td>
+                                    <td class="border-r border-dashed border-slate-300 align-middle px-1 py-1">
+                                        <input id="blank-num-${cNum}-${b}" type="number" min="1" max="60" value="${autoNum}" class="w-full text-center text-xs font-black border border-slate-200 rounded py-1 focus:ring-1 focus:ring-blue-500 bg-white">
+                                    </td>
+                                    <td class="border-r border-dashed border-slate-300 align-middle px-1.5 py-1">
+                                        <input id="blank-name-${cNum}-${b}" type="text" placeholder="이름 입력" class="w-full text-center text-sm font-black border-2 border-blue-400 rounded-lg py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white placeholder:text-slate-300">
+                                    </td>
+                                    <td class="border-r border-dashed border-slate-300 align-middle px-1 py-1">
+                                        <select id="blank-gender-${cNum}-${b}" class="w-full text-center text-xs font-bold border border-slate-200 rounded py-1.5 bg-white">
+                                            <option value="남">남</option>
+                                            <option value="여">여</option>
+                                        </select>
+                                    </td>
+                                    <td class="align-middle px-1 py-1">
+                                        <select id="blank-next-${cNum}-${b}" class="w-full text-center text-xs font-bold border border-slate-200 rounded py-1.5 bg-white text-blue-700">
+                                            ${nextClassOptions}
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="bg-slate-100/70 border-t border-dashed border-slate-200 px-3 py-1.5 flex items-center justify-end">
+                            <button type="button" onclick="submitInlineBlankCard(${cNum}, ${b})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-lg shadow-xs active:scale-95 transition-all flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-[10px]"></i>
+                                <span>등록</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                </div>
+            </div>
+            `;
+        }
+
+        renderedContent.innerHTML = html;
+    }
+
+    function startInlineCardEdit(studentId) {
+        appState.editingCardId = studentId;
+        renderStudentCards();
+    }
+
+    function cancelInlineCardEdit() {
+        appState.editingCardId = null;
+        renderStudentCards();
+    }
+
+    function saveInlineCardEdit(studentId) {
+        const student = appState.students.find(s => s.id === studentId);
+        if (!student) return;
+
+        const classInput = document.getElementById(`inline-class-${studentId}`);
+        const numInput = document.getElementById(`inline-num-${studentId}`);
+        const nameInput = document.getElementById(`inline-name-${studentId}`);
+        const genderSelect = document.getElementById(`inline-gender-${studentId}`);
+        const nextSelect = document.getElementById(`inline-next-${studentId}`);
+
+        const newName = nameInput.value.trim();
+        if (!newName) {
+            showToast("학생 이름을 입력해주세요.");
+            nameInput.focus();
+            return;
+        }
+
+        student.originalClass = parseInt(classInput.value) || student.originalClass;
+        student.originalNumber = parseInt(numInput.value) || student.originalNumber;
+        student.name = newName;
+        student.gender = genderSelect.value;
+        student.nextClass = nextSelect.value;
+
+        appState.editingCardId = null;
+        sortStudents();
+        saveToLocalStorage();
+        updateHeaderSummaries();
+        renderStudentCards();
+        showToast(`${newName} 학생 카드가 수정되었습니다.`);
+    }
+
+    function submitInlineBlankCard(cNum, blankIndex) {
+        const numInput = document.getElementById(`blank-num-${cNum}-${blankIndex}`);
+        const nameInput = document.getElementById(`blank-name-${cNum}-${blankIndex}`);
+        const genderSelect = document.getElementById(`blank-gender-${cNum}-${blankIndex}`);
+        const nextSelect = document.getElementById(`blank-next-${cNum}-${blankIndex}`);
+
+        const name = nameInput.value.trim();
+        if (!name) {
+            showToast("학생 이름을 입력해주세요.");
+            nameInput.focus();
+            return;
+        }
+
+        const curNum = parseInt(numInput.value) || (appState.students.length + 1);
+        const gender = genderSelect.value;
+        const nextClass = nextSelect.value;
+
+        appState.students.push({
+            id: `card-${cNum}-${curNum}-${Date.now().toString(36)}`,
+            originalClass: cNum,
+            originalNumber: curNum,
+            name: name,
+            gender: gender,
+            nextClass: nextClass,
+            notes: ""
+        });
+
+        sortStudents();
+        saveToLocalStorage();
+        updateHeaderSummaries();
+        renderStudentCards();
+        showToast(`${cNum}반 ${name} 학생이 카드로 등록되었습니다.`);
+    }
+
+    function generatePrintCardsHTML(classList, cNum) {
+        let cardsHTML = "";
+        classList.forEach(st => {
+            const isMale = st.gender === "남";
+            const genderColor = isMale ? "#1d4ed8" : "#e11d48";
+            
+            const nameLen = (st.name || "").length;
+            let printNameSize = "19px";
+            if (nameLen >= 11) {
+                printNameSize = "11px";
+            } else if (nameLen >= 8) {
+                printNameSize = "12px";
+            } else if (nameLen >= 5) {
+                printNameSize = "14px";
+            } else if (nameLen === 4) {
+                printNameSize = "16px";
+            }
+
+            cardsHTML += `
+                <div style="border: 2px solid #334155; border-radius: 8px; overflow: hidden; background: white;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed;">
+                        <thead>
+                            <tr style="background: #f8fafc; font-size: 11px; font-weight: bold; border-bottom: 1px solid #64748b; color: #475569;">
+                                <th style="width: 18%; padding: 4px 1px; border-right: 1px solid #cbd5e1;">반</th>
+                                <th style="width: 18%; padding: 4px 1px; border-right: 1px solid #cbd5e1;">번호</th>
+                                <th style="width: 34%; padding: 4px 1px; border-right: 1px solid #cbd5e1;">이름</th>
+                                <th style="width: 15%; padding: 4px 1px; border-right: 1px solid #cbd5e1;">성별</th>
+                                <th style="width: 15%; padding: 4px 1px;">진급반</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="height: 68px;">
+                                <td style="border-right: 1px solid #64748b; vertical-align: middle;">
+                                    <div style="font-weight: 900; line-height: 1.1;">
+                                        <div style="font-size: 18px;">${st.originalClass}</div>
+                                        <div style="font-size: 13px;">반</div>
+                                    </div>
+                                </td>
+                                <td style="border-right: 1px solid #64748b; vertical-align: middle;">
+                                    <div style="font-weight: 900; line-height: 1.1;">
+                                        <div style="font-size: 18px;">${st.originalNumber}</div>
+                                        <div style="font-size: 13px;">번</div>
+                                    </div>
+                                </td>
+                                <td style="border-right: 1px solid #64748b; vertical-align: middle; padding: 2px 1px;">
+                                    <div style="font-size: ${printNameSize}; font-weight: 900; color: #0f172a; word-break: break-all; line-height: 1.15; text-align: center;">
+                                        ${st.name}
+                                    </div>
+                                </td>
+                                <td style="border-right: 1px solid #64748b; vertical-align: middle;">
+                                    <span style="font-size: 19px; font-weight: 900; color: ${genderColor};">${st.gender}</span>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <div style="font-weight: 900; line-height: 1.1;">
+                                        <div style="font-size: 18px; color: #1d4ed8;">${st.nextClass || "&nbsp;"}</div>
+                                        <div style="font-size: 13px;">반</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        });
+
+        // 인쇄용 빈 카드 4장 추가
+        for (let b = 1; b <= 4; b++) {
+            cardsHTML += `
+                <div style="border: 2px dashed #64748b; border-radius: 8px; overflow: hidden; background: white;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed;">
+                        <thead>
+                            <tr style="background: #f8fafc; font-size: 11px; font-weight: bold; border-bottom: 1px solid #94a3b8; color: #64748b;">
+                                <th style="width: 18%; padding: 4px 1px; border-right: 1px solid #cbd5e1;">반</th>
+                                <th style="width: 18%; padding: 4px 1px; border-right: 1px solid #cbd5e1;">번호</th>
+                                <th style="width: 34%; padding: 4px 1px; border-right: 1px solid #cbd5e1;">이름</th>
+                                <th style="width: 15%; padding: 4px 1px; border-right: 1px solid #cbd5e1;">성별</th>
+                                <th style="width: 15%; padding: 4px 1px;">진급반</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="height: 68px;">
+                                <td style="border-right: 1px dashed #94a3b8; vertical-align: middle;">
+                                    <div style="font-weight: 900; line-height: 1.1; color: #475569;">
+                                        <div style="font-size: 18px;">${cNum || ''}</div>
+                                        <div style="font-size: 13px;">반</div>
+                                    </div>
+                                </td>
+                                <td style="border-right: 1px dashed #94a3b8; vertical-align: middle;">&nbsp;</td>
+                                <td style="border-right: 1px dashed #94a3b8; vertical-align: middle; padding: 0 2px;">&nbsp;</td>
+                                <td style="border-right: 1px dashed #94a3b8; vertical-align: middle;">&nbsp;</td>
+                                <td style="vertical-align: middle;">&nbsp;</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        return cardsHTML;
+    }
+
+    /* 반편성 보드 렌더링 */
+    function renderBoardView() {
+        const unassignedContainer = document.getElementById("board-drop-unassigned");
+        const classesContainer = document.getElementById("board-classes-container");
+        const unassignedBadge = document.getElementById("board-unassigned-badge");
+        if (!unassignedContainer || !classesContainer) return;
+
+        const unassigned = appState.students.filter(s => !s.nextClass);
+        if (unassignedBadge) {
+            unassignedBadge.textContent = `${unassigned.length}명`;
+        }
+
+        unassignedContainer.innerHTML = unassigned.map(s => `
+            <div draggable="true" ondragstart="handleDragStart(event, '${s.id}')"
+                 class="h-[34px] shrink-0 p-1.5 px-2 bg-white border border-slate-200 rounded-lg shadow-2xs hover:shadow-sm cursor-grab active:cursor-grabbing flex items-center justify-between text-xs font-bold transition-all">
+                <div class="flex items-center gap-1 min-w-0">
+                    <span class="px-1 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] shrink-0">${s.originalClass}-${s.originalNumber}</span>
+                    <span class="font-extrabold text-slate-800 truncate">${s.name}</span>
+                </div>
+                <span class="${s.gender === '남' ? 'text-blue-600' : 'text-rose-600'} font-black text-[11px] shrink-0 ml-1">${s.gender}</span>
+            </div>
+        `).join("") || `<div class="p-8 text-center text-xs text-slate-400 font-bold">미배정 학생이 없습니다.</div>`;
+
+        // 학급 수에 따라 최적의 그리드 열 수 자동 배치
+        let gridCols = "grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
+        if (appState.nextClassesCount === 1) {
+            gridCols = "grid-cols-1";
+        } else if (appState.nextClassesCount === 2) {
+            gridCols = "grid-cols-1 sm:grid-cols-2";
+        } else if (appState.nextClassesCount === 4) {
+            gridCols = "grid-cols-2 sm:grid-cols-2 xl:grid-cols-4";
+        } else if (appState.nextClassesCount >= 5) {
+            gridCols = "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4";
+        }
+        classesContainer.className = `grid ${gridCols} gap-3.5`;
+
+        let classesHtml = "";
+        for (let c = 1; c <= appState.nextClassesCount; c++) {
+            const cStr = `${c}`;
+            const classStudents = appState.students.filter(s => s.nextClass === cStr);
+            const maleCount = classStudents.filter(s => s.gender === "남").length;
+            const femaleCount = classStudents.filter(s => s.gender === "여").length;
+            const classLabel = getClassLabel(c);
+
+            classesHtml += `
+                <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex flex-col">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
+                        <div class="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                            <span>${classLabel}</span>
+                        </div>
+                        <div class="flex items-center gap-1 text-[11px] font-black">
+                            <span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">남 ${maleCount}</span>
+                            <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">여 ${femaleCount}</span>
+                            <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700">계 ${classStudents.length}</span>
+                        </div>
+                    </div>
+                    <div ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${c}')"
+                         class="space-y-1.5 p-1.5 rounded-xl border border-dashed border-slate-300 bg-white/70 min-h-[140px] max-h-[360px] overflow-y-auto">
+                        ${classStudents.map(s => `
+                            <div draggable="true" ondragstart="handleDragStart(event, '${s.id}')"
+                                 class="p-2 bg-white border border-slate-200 rounded-xl shadow-2xs hover:shadow-sm cursor-grab active:cursor-grabbing flex items-center justify-between text-xs font-bold transition-all">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px]">${s.originalClass}-${s.originalNumber}</span>
+                                    <span class="font-extrabold text-slate-800">${s.name}</span>
+                                </div>
+                                <span class="${s.gender === '남' ? 'text-blue-600' : 'text-rose-600'} font-black text-[11px]">${s.gender}</span>
+                            </div>
+                        `).join("") || `<div class="h-full min-h-[110px] flex items-center justify-center p-4 text-center text-xs text-slate-400 font-bold select-none leading-relaxed">학생 카드를 드래그하여 원하는 진급반에 배정하세요.</div>`}
+                    </div>
+                </div>
+            `;
+        }
+        classesContainer.innerHTML = classesHtml;
+    }
+
+    /* 드래그 앤 드롭 이벤트 */
+    function handleDragStart(e, id) {
+        appState.draggedStudentId = id;
+        e.dataTransfer.setData("text/plain", id);
+    }
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add("drag-over");
+    }
+    function handleDragLeave(e) {
+        e.currentTarget.classList.remove("drag-over");
+    }
+    function handleDrop(e, targetClass) {
+        e.preventDefault();
+        e.currentTarget.classList.remove("drag-over");
+        const studentId = appState.draggedStudentId || e.dataTransfer.getData("text/plain");
+        if (!studentId) return;
+
+        const student = appState.students.find(s => s.id === studentId);
+        if (student) {
+            student.nextClass = targetClass ? String(targetClass) : "";
+            saveToLocalStorage();
+            renderBoardView();
+        }
+    }
+    function resetAllAssignments() {
+        showCustomConfirm("배정 초기화", "모든 학생의 진급반 배정을 초기화(미배정)하시겠습니까?", () => {
+            appState.students.forEach(s => s.nextClass = "");
+            saveToLocalStorage();
+            renderBoardView();
+            showToast("모든 반 배정이 초기화되었습니다.");
+        });
+    }
+
+    /* 내년 진급반 명단 렌더링 */
+    function renderNextRosterView() {
+        const filtersContainer = document.getElementById("roster-nextclass-filters");
+        const statLabel = document.getElementById("roster-nextclass-stat");
+        const tbody = document.getElementById("next-roster-tbody");
+        if (!filtersContainer || !tbody) return;
+
+        let curFilter = appState.filterNextClass || "1";
+        if (parseInt(curFilter) > appState.nextClassesCount) curFilter = "1";
+        appState.filterNextClass = curFilter;
+
+        let filterBtns = "";
+        for (let c = 1; c <= appState.nextClassesCount; c++) {
+            const active = String(c) === curFilter;
+            const label = getClassLabel(c);
+            filterBtns += `
+                <button type="button" onclick="setNextClassFilter('${c}')"
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${active ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'}">
+                    ${label}
+                </button>
+            `;
+        }
+        filtersContainer.innerHTML = filterBtns;
+
+        const classStudents = appState.students.filter(s => s.nextClass === curFilter);
+        classStudents.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
+        const male = classStudents.filter(s => s.gender === "남").length;
+        const female = classStudents.filter(s => s.gender === "여").length;
+        if (statLabel) {
+            statLabel.textContent = `재적인원: 남 ${male}명, 여 ${female}명 (계 ${classStudents.length}명)`;
+        }
+
+        if (classStudents.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="py-12 text-slate-400 font-bold text-center">해당 반에 배정된 학생이 없습니다.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = classStudents.map((st, idx) => {
+            const newNum = idx + 1;
+            const isDropdownOpen = appState.activeNoteDropdownId === st.id;
+            return `
+                <tr class="hover:bg-slate-50 transition-all">
+                    <td class="py-2.5 px-2 border-b border-r border-slate-200 font-black text-slate-800">${newNum}</td>
+                    <td class="py-2.5 px-3 border-b border-r border-slate-200 font-black text-slate-900">${st.name}</td>
+                    <td class="py-2.5 px-2 border-b border-r border-slate-200 font-extrabold ${st.gender === '남' ? 'text-blue-600' : 'text-rose-600'}">${st.gender}</td>
+                    <td class="py-2.5 px-2 border-b border-r border-slate-200 text-slate-700 font-bold">${st.originalClass}반</td>
+                    <td class="py-2.5 px-2 border-b border-r border-slate-200 text-slate-700 font-bold">${st.originalNumber}번</td>
+                    <td class="py-2.5 px-4 border-b border-slate-200 text-left min-w-[520px]">
+                        <div class="relative flex items-center gap-2 max-w-2xl">
+                            <button type="button" onclick="toggleNoteDropdown('${st.id}')"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-black shrink-0 transition-all shadow-2xs">
+                                <i class="fa-solid fa-tag text-[11px]"></i>
+                                <span>항목선택</span>
+                            </button>
+                            <input type="text" value="${st.notes || ''}" placeholder="항목 직접 입력 또는 [항목선택]"
+                                   onchange="updateStudentNoteText('${st.id}', this.value)"
+                                   class="w-full min-w-[380px] px-3.5 py-1.5 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            
+                            ${isDropdownOpen ? `
+                                <div class="absolute top-10 left-0 z-40 w-72 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 space-y-2.5">
+                                    <div class="flex items-center justify-between border-b border-slate-100 pb-1.5 text-xs font-black text-slate-800">
+                                        <span>비고 항목 빠른 추가</span>
+                                        <button type="button" onclick="clearStudentNotes('${st.id}')" class="text-rose-500 hover:text-rose-700 text-[11px] font-bold">지우기</button>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        ${NOTE_PRESET_ITEMS.map(tag => `
+                                            <button type="button" onclick="addNoteTag('${st.id}', '${tag}')"
+                                                    class="px-2 py-1 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-700 border border-slate-200 text-[11px] font-bold transition-all">
+                                                + ${tag}
+                                            </button>
+                                        `).join("")}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+    }
+
+    function setNextClassFilter(c) {
+        appState.filterNextClass = c;
+        renderNextRosterView();
+    }
+    function toggleNoteDropdown(stId) {
+        appState.activeNoteDropdownId = appState.activeNoteDropdownId === stId ? null : stId;
+        renderNextRosterView();
+    }
+    function addNoteTag(stId, tag) {
+        const student = appState.students.find(s => s.id === stId);
+        if (student) {
+            const current = (student.notes || "").trim();
+            student.notes = current ? `${current}, ${tag}` : tag;
+            saveToLocalStorage();
+            renderNextRosterView();
+        }
+    }
+    function clearStudentNotes(stId) {
+        const student = appState.students.find(s => s.id === stId);
+        if (student) {
+            student.notes = "";
+            saveToLocalStorage();
+            renderNextRosterView();
+        }
+    }
+    function updateStudentNoteText(stId, val) {
+        const student = appState.students.find(s => s.id === stId);
+        if (student) {
+            student.notes = val.trim();
+            saveToLocalStorage();
+        }
+    }
+
+    /* 올해 반별 배정명단 렌더링 */
+    function renderCurRosterView() {
+        const filtersContainer = document.getElementById("cur-roster-class-filters");
+        const statLabel = document.getElementById("cur-roster-class-stat");
+        const tbody = document.getElementById("cur-roster-tbody");
+        if (!filtersContainer || !tbody) return;
+
+        let curFilter = parseInt(appState.filterCurRosterClass) || 1;
+        if (curFilter > appState.curClassesCount) curFilter = 1;
+        appState.filterCurRosterClass = String(curFilter);
+
+        let filterBtns = "";
+        for (let c = 1; c <= appState.curClassesCount; c++) {
+            const active = c === curFilter;
+            filterBtns += `
+                <button type="button" onclick="setCurRosterFilter('${c}')"
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${active ? 'bg-purple-600 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'}">
+                    ${c}반
+                </button>
+            `;
+        }
+        filtersContainer.innerHTML = filterBtns;
+
+        const classStudents = appState.students.filter(s => s.originalClass === curFilter);
+        const maxNum = classStudents.reduce((max, s) => Math.max(max, s.originalNumber || 0), 0) || 15;
+        const male = classStudents.filter(s => s.gender === "남").length;
+        const female = classStudents.filter(s => s.gender === "여").length;
+        if (statLabel) {
+            statLabel.textContent = `재적인원: 남 ${male}명, 여 ${female}명 (계 ${classStudents.length}명)`;
+        }
+
+        const studentByNum = {};
+        classStudents.forEach(s => { studentByNum[s.originalNumber] = s; });
+
+        let rowsHtml = "";
+        for (let n = 1; n <= maxNum; n++) {
+            const st = studentByNum[n];
+            if (st) {
+                const nextLabel = st.nextClass ? `${getClassLabel(st.nextClass)}` : "-";
+                rowsHtml += `
+                    <tr class="hover:bg-slate-50 transition-all">
+                        <td class="py-2.5 px-2 border-b border-r border-slate-200 font-bold text-slate-800">${st.originalClass}반</td>
+                        <td class="py-2.5 px-2 border-b border-r border-slate-200 font-black text-slate-900">${st.originalNumber}</td>
+                        <td class="py-2.5 px-3 border-b border-r border-slate-200 font-black text-slate-900">${st.name}</td>
+                        <td class="py-2.5 px-2 border-b border-r border-slate-200 font-extrabold ${st.gender === '남' ? 'text-blue-600' : 'text-rose-600'}">${st.gender}</td>
+                        <td class="py-2.5 px-2 border-b border-r border-slate-200 font-black text-blue-700 bg-amber-50/40">${nextLabel}</td>
+                        <td class="py-2.5 px-4 border-b border-slate-200 text-center min-w-[520px] text-xs font-semibold text-slate-600">${st.notes || '-'}</td>
+                    </tr>
+                `;
+            } else {
+                rowsHtml += `
+                    <tr class="bg-slate-50/50">
+                        <td class="py-2.5 px-2 border-b border-r border-slate-200 font-bold text-slate-400">${curFilter}반</td>
+                        <td class="py-2.5 px-2 border-b border-r border-slate-200 font-bold text-slate-400">${n}</td>
+                        <td class="py-2.5 px-3 border-b border-r border-slate-200 font-bold text-slate-300">-</td>
+                        <td class="py-2.5 px-2 border-b border-r border-slate-200 font-bold text-slate-300">-</td>
+                        <td class="py-2.5 px-2 border-b border-r border-slate-200 font-bold text-slate-300 bg-amber-50/20">-</td>
+                        <td class="py-2.5 px-4 border-b border-slate-200 text-center min-w-[520px]">
+                            <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-600 text-xs font-bold">결번</span>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        tbody.innerHTML = rowsHtml || `<tr><td colspan="6" class="py-10 text-slate-400 font-bold text-center">학생 데이터가 없습니다.</td></tr>`;
+    }
+
+    function setCurRosterFilter(c) {
+        appState.filterCurRosterClass = c;
+        renderCurRosterView();
+    }
+
+    /* 반편성 통계표 렌더링 */
+    function renderStatsView() {
+        const totalCount = appState.students.length;
+        const maleTotal = appState.students.filter(s => s.gender === "남").length;
+        const femaleTotal = appState.students.filter(s => s.gender === "여").length;
+        const curClassesCountText = appState.curGrade === 0 ? "해당 없음" : `${appState.curClassesCount}개 반`;
+
+        // 상단 요약 카드 수치 갱신
+        const elNextCount = document.getElementById("stat-next-classes-count");
+        const elCurCount = document.getElementById("stat-cur-classes-count");
+        const elTotal = document.getElementById("stat-total-count");
+        const elMale = document.getElementById("stat-male-count");
+        const elFemale = document.getElementById("stat-female-count");
+
+        if (elNextCount) elNextCount.textContent = `${appState.nextClassesCount}개 반`;
+        if (elCurCount) elCurCount.textContent = curClassesCountText;
+        if (elTotal) elTotal.textContent = `${totalCount}명`;
+        if (elMale) elMale.textContent = `${maleTotal}명`;
+        if (elFemale) elFemale.textContent = `${femaleTotal}명`;
+
+        // 표 타이틀 갱신
+        const titleNextTable = document.getElementById("stat-table-title");
+        if (titleNextTable) {
+            titleNextTable.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"></span><span>${appState.year}학년도 ${appState.nextGrade}학년 학급별 배정 통계표</span>`;
+        }
+
+        const titleCurTable = document.getElementById("stat-cur-table-title");
+        if (titleCurTable) {
+            const prevYear = (parseInt(appState.year, 10) || defaultYear) - 1;
+            titleCurTable.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block"></span><span>${prevYear}학년도 ${appState.curGrade}학년 학급별 배정 통계표</span>`;
+        }
+
+        // 1. 진급 학년 배정 통계표 바디 생성 (가반, 나반... 미배정 제외)
+        const nextTbody = document.getElementById("stats-tbody");
+        if (nextTbody) {
+            let nextHtml = "";
+            let sumMale = 0;
+            let sumFemale = 0;
+            let sumTotal = 0;
+
+            for (let c = 1; c <= appState.nextClassesCount; c++) {
+                const cStr = `${c}`;
+                const list = appState.students.filter(s => s.nextClass === cStr);
+                const m = list.filter(s => s.gender === "남").length;
+                const f = list.filter(s => s.gender === "여").length;
+                const tot = list.length;
+
+                sumMale += m;
+                sumFemale += f;
+                sumTotal += tot;
+
+                const mPct = tot > 0 ? Math.round((m / tot) * 100) : 0;
+                const fPct = tot > 0 ? (100 - mPct) : 0;
+                const cLabel = getClassLabel(c);
+
+                nextHtml += `
+                    <tr class="hover:bg-slate-50 transition-all">
+                        <td class="py-3 px-3 border-b border-r border-slate-200 font-black text-slate-800">${cLabel}</td>
+                        <td class="py-3 px-3 border-b border-r border-slate-200 font-extrabold text-blue-600">${m}명</td>
+                        <td class="py-3 px-3 border-b border-r border-slate-200 font-extrabold text-rose-600">${f}명</td>
+                        <td class="py-3 px-3 border-b border-r border-slate-200 font-black text-slate-900">${tot}명</td>
+                        <td class="py-3 px-3 border-b border-slate-200">
+                            <div class="flex items-center gap-2 max-w-xs mx-auto">
+                                <span class="text-[11px] font-black text-blue-600 w-8 text-right">${mPct}%</span>
+                                <div class="flex-1 h-3 rounded-full bg-slate-100 flex overflow-hidden border border-slate-200">
+                                    <div class="bg-blue-500 h-full" style="width: ${mPct}%"></div>
+                                    <div class="bg-rose-500 h-full" style="width: ${fPct}%"></div>
+                                </div>
+                                <span class="text-[11px] font-black text-rose-600 w-8 text-left">${fPct}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            const totalMPct = sumTotal > 0 ? Math.round((sumMale / sumTotal) * 100) : 0;
+            const totalFPct = sumTotal > 0 ? (100 - totalMPct) : 0;
+            nextHtml += `
+                <tr class="bg-slate-50/80 font-black text-slate-900">
+                    <td class="py-3 px-3 border-b border-r border-slate-200">계</td>
+                    <td class="py-3 px-3 border-b border-r border-slate-200 text-blue-700">${sumMale}명</td>
+                    <td class="py-3 px-3 border-b border-r border-slate-200 text-rose-700">${sumFemale}명</td>
+                    <td class="py-3 px-3 border-b border-r border-slate-200">${sumTotal}명</td>
+                    <td class="py-3 px-3 border-b border-slate-200">
+                        <div class="flex items-center gap-2 max-w-xs mx-auto">
+                            <span class="text-[11px] font-black text-blue-700 w-8 text-right">${totalMPct}%</span>
+                            <div class="flex-1 h-3 rounded-full bg-slate-200 flex overflow-hidden">
+                                <div class="bg-blue-600 h-full" style="width: ${totalMPct}%"></div>
+                                <div class="bg-rose-600 h-full" style="width: ${totalFPct}%"></div>
+                            </div>
+                            <span class="text-[11px] font-black text-rose-700 w-8 text-left">${totalFPct}%</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            nextTbody.innerHTML = nextHtml;
+        }
+
+        // 2. 현재 학년 배정 통계표 (신입생 제외)
+        const curWrapper = document.getElementById("stat-cur-table-wrapper");
+        const curTbody = document.getElementById("stats-cur-tbody");
+        if (appState.curGrade === 0) {
+            if (curWrapper) curWrapper.classList.add("hidden");
+        } else {
+            if (curWrapper) curWrapper.classList.remove("hidden");
+            if (curTbody) {
+                let curHtml = "";
+                let curSumMale = 0;
+                let curSumFemale = 0;
+                let curSumTotal = 0;
+
+                for (let c = 1; c <= appState.curClassesCount; c++) {
+                    const list = appState.students.filter(s => s.originalClass === c);
+                    const m = list.filter(s => s.gender === "남").length;
+                    const f = list.filter(s => s.gender === "여").length;
+                    const tot = list.length;
+
+                    curSumMale += m;
+                    curSumFemale += f;
+                    curSumTotal += tot;
+
+                    const mPct = tot > 0 ? Math.round((m / tot) * 100) : 0;
+                    const fPct = tot > 0 ? (100 - mPct) : 0;
+
+                    curHtml += `
+                        <tr class="hover:bg-slate-50 transition-all">
+                            <td class="py-3 px-3 border-b border-r border-slate-200 font-black text-slate-800">${c}반</td>
+                            <td class="py-3 px-3 border-b border-r border-slate-200 font-extrabold text-blue-600">${m}명</td>
+                            <td class="py-3 px-3 border-b border-r border-slate-200 font-extrabold text-rose-600">${f}명</td>
+                            <td class="py-3 px-3 border-b border-r border-slate-200 font-black text-slate-900">${tot}명</td>
+                            <td class="py-3 px-3 border-b border-slate-200">
+                                <div class="flex items-center gap-2 max-w-xs mx-auto">
+                                    <span class="text-[11px] font-black text-blue-600 w-8 text-right">${mPct}%</span>
+                                    <div class="flex-1 h-3 rounded-full bg-slate-100 flex overflow-hidden border border-slate-200">
+                                        <div class="bg-blue-500 h-full" style="width: ${mPct}%"></div>
+                                        <div class="bg-rose-500 h-full" style="width: ${fPct}%"></div>
+                                    </div>
+                                    <span class="text-[11px] font-black text-rose-600 w-8 text-left">${fPct}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                const curTotalMPct = curSumTotal > 0 ? Math.round((curSumMale / curSumTotal) * 100) : 0;
+                const curTotalFPct = curSumTotal > 0 ? (100 - curTotalMPct) : 0;
+                curHtml += `
+                    <tr class="bg-slate-50/80 font-black text-slate-900">
+                        <td class="py-3 px-3 border-b border-r border-slate-200">계</td>
+                        <td class="py-3 px-3 border-b border-r border-slate-200 text-blue-700">${curSumMale}명</td>
+                        <td class="py-3 px-3 border-b border-r border-slate-200 text-rose-700">${curSumFemale}명</td>
+                        <td class="py-3 px-3 border-b border-r border-slate-200">${curSumTotal}명</td>
+                        <td class="py-3 px-3 border-b border-slate-200">
+                            <div class="flex items-center gap-2 max-w-xs mx-auto">
+                                <span class="text-[11px] font-black text-blue-700 w-8 text-right">${curTotalMPct}%</span>
+                                <div class="flex-1 h-3 rounded-full bg-slate-200 flex overflow-hidden">
+                                    <div class="bg-blue-600 h-full" style="width: ${curTotalMPct}%"></div>
+                                    <div class="bg-rose-600 h-full" style="width: ${curTotalFPct}%"></div>
+                                </div>
+                                <span class="text-[11px] font-black text-rose-700 w-8 text-left">${curTotalFPct}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                curTbody.innerHTML = curHtml;
+            }
+        }
+    }
+
+    function deleteStudent(id) {
+        showCustomConfirm("학생 삭제", "해당 학생 카드를 삭제하시겠습니까?", () => {
+            appState.students = appState.students.filter(s => s.id !== id);
+            sortStudents();
+            saveToLocalStorage();
+            renderStudentCards();
+            showToast("학생 카드가 삭제되었습니다.");
+        });
+    }
+
+    /* 명단 인쇄 함수들 */
+    function printSelectedNewClassRoster() {
+        const curClass = appState.filterNextClass || "1";
+        const classStudents = appState.students.filter(s => s.nextClass === curClass);
+        if (classStudents.length === 0) {
+            showToast("해당 반에 배정된 학생이 없습니다.");
+            return;
+        }
+        classStudents.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
+        const printWin = window.open("", "_blank");
+        if (!printWin) { showToast("인쇄 팝업이 차단되었습니다."); return; }
+
+        const male = classStudents.filter(s => s.gender === "남").length;
+        const female = classStudents.filter(s => s.gender === "여").length;
+        const classLabel = getClassLabel(curClass);
+
+        const rows = classStudents.map((s, idx) => `
+            <tr>
+                <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${idx + 1}</td>
+                <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${s.name}</td>
+                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.gender}</td>
+                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.originalClass}반</td>
+                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.originalNumber}번</td>
+                <td style="padding: 7px 8px; border: 1px solid #475569; text-align: left;">${s.notes || ''}</td>
+            </tr>
+        `).join("");
+
+        const html = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>${appState.school} ${appState.year}학년도 ${appState.nextGrade}학년 ${classLabel} 명렬표</title>
+                <style>
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", Dotum, sans-serif; margin: 0; padding: 0; color: #0f172a; }
+                    .header-top { text-align: center; margin-bottom: 8px; }
+                    .title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+                    .author-line { text-align: right; font-size: 13px; font-weight: bold; margin-top: 36px; margin-bottom: 18px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+                    th { background: #f1f5f9; padding: 7px 4px; border: 1px solid #475569; font-weight: bold; }
+                    .footer-stat { margin-top: 10px; text-align: right; font-size: 13px; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <div class="header-top">
+                    <div class="title">${appState.school} ${appState.year}학년도 ${appState.nextGrade}학년 ${classLabel} 명렬표</div>
+                </div>
+                <div class="author-line">
+                    작성자: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(인)
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 11%;">진급반 번호</th>
+                            <th style="width: 17%;">성명</th>
+                            <th style="width: 8%;">성별</th>
+                            <th style="width: 12%;">현재 반</th>
+                            <th style="width: 12%;">현재 번호</th>
+                            <th style="width: 40%;">비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+                <div class="footer-stat">재적인원: 남 ${male}명, 여 ${female}명 (계 ${classStudents.length}명)</div>
+            </body>
+            </html>
+        `;
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+        setTimeout(() => { printWin.focus(); printWin.print(); }, 350);
+    }
+
+    function printSelectedCurClassRoster() {
+        const curClass = parseInt(appState.filterCurRosterClass) || 1;
+        const classStudents = appState.students.filter(s => s.originalClass === curClass);
+        const maxNum = classStudents.reduce((max, s) => Math.max(max, s.originalNumber || 0), 0) || 15;
+        const male = classStudents.filter(s => s.gender === "남").length;
+        const female = classStudents.filter(s => s.gender === "여").length;
+
+        const studentByNum = {};
+        classStudents.forEach(s => { studentByNum[s.originalNumber] = s; });
+
+        let rows = "";
+        for (let n = 1; n <= maxNum; n++) {
+            const s = studentByNum[n];
+            if (s) {
+                const nextLabel = s.nextClass ? `${getClassLabel(s.nextClass)}` : "-";
+                rows += `
+                    <tr>
+                        <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.originalClass}반</td>
+                        <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${s.originalNumber}</td>
+                        <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${s.name}</td>
+                        <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.gender}</td>
+                        <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${nextLabel}</td>
+                        <td style="padding: 7px 8px; border: 1px solid #475569; text-align: left;">${s.notes || ''}</td>
+                    </tr>
+                `;
+            } else {
+                rows += `
+                    <tr style="background: #f8fafc;">
+                        <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${curClass}반</td>
+                        <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${n}</td>
+                        <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">-</td>
+                        <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">-</td>
+                        <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">-</td>
+                        <td style="padding: 7px 8px; border: 1px solid #475569; text-align: center; color: #64748b; font-weight: bold;">결번</td>
+                    </tr>
+                `;
+            }
+        }
+
+        const printWin = window.open("", "_blank");
+        if (!printWin) { showToast("인쇄 팝업이 차단되었습니다."); return; }
+
+        const curGradeText = appState.curGrade === 0 ? "신입생" : `${appState.curGrade}학년`;
+        const html = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>${appState.school} ${curGradeText} ${curClass}반 배정 명렬표</title>
+                <style>
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", Dotum, sans-serif; margin: 0; padding: 0; color: #0f172a; }
+                    .header-top { text-align: center; margin-bottom: 8px; }
+                    .title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+                    .author-line { text-align: right; font-size: 13px; font-weight: bold; margin-top: 36px; margin-bottom: 18px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+                    th { background: #f1f5f9; padding: 7px 4px; border: 1px solid #475569; font-weight: bold; }
+                    .footer-stat { margin-top: 10px; text-align: right; font-size: 13px; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <div class="header-top">
+                    <div class="title">${appState.school} ${curGradeText} ${curClass}반 배정 명렬표</div>
+                </div>
+                <div class="author-line">
+                    담임: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(인)
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 12%;">현재 반</th>
+                            <th style="width: 12%;">현재 번호</th>
+                            <th style="width: 17%;">성명</th>
+                            <th style="width: 8%;">성별</th>
+                            <th style="width: 15%;">진급반</th>
+                            <th style="width: 36%;">비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+                <div class="footer-stat">재적인원: 남 ${male}명, 여 ${female}명 (계 ${classStudents.length}명)</div>
+            </body>
+            </html>
+        `;
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+        setTimeout(() => { printWin.focus(); printWin.print(); }, 350);
+    }
+
+    function printAllRosters() {
+        if (appState.students.length === 0) {
+            showToast("출력할 학생 데이터가 없습니다.");
+            return;
+        }
+
+        const printWin = window.open("", "_blank");
+        if (!printWin) { showToast("인쇄 팝업이 차단되었습니다."); return; }
+
+        let pagesHtml = "";
+        const prevYear = (parseInt(appState.year, 10) || defaultYear) - 1;
+        const total = appState.students.length;
+        const maleTotal = appState.students.filter(s => s.gender === "남").length;
+        const femaleTotal = appState.students.filter(s => s.gender === "여").length;
+        const curClassesCountText = appState.curGrade === 0 ? "해당 없음" : `${appState.curClassesCount}개 반`;
+
+        // 1. 반편성 통계표 페이지
+        let statsNextTableRows = "";
+        let nextSumMale = 0, nextSumFemale = 0, nextSumTotal = 0;
+        for (let c = 1; c <= appState.nextClassesCount; c++) {
+            const cStr = `${c}`;
+            const list = appState.students.filter(s => s.nextClass === cStr);
+            const m = list.filter(s => s.gender === "남").length;
+            const f = list.filter(s => s.gender === "여").length;
+            const tot = list.length;
+            nextSumMale += m; nextSumFemale += f; nextSumTotal += tot;
+            statsNextTableRows += `
+                <tr>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; font-weight: bold; text-align: center;">${getClassLabel(c)}</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${m}명</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${f}명</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; font-weight: bold; text-align: center;">${tot}명</td>
+                </tr>
+            `;
+        }
+        statsNextTableRows += `
+            <tr style="background: #f8fafc; font-weight: bold;">
+                <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">계</td>
+                <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${nextSumMale}명</td>
+                <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${nextSumFemale}명</td>
+                <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${nextSumTotal}명</td>
+            </tr>
+        `;
+
+        let statsCurTableBlock = "";
+        if (appState.curGrade !== 0) {
+            let curTableRows = "";
+            let curSumMale = 0, curSumFemale = 0, curSumTotal = 0;
+            for (let c = 1; c <= appState.curClassesCount; c++) {
+                const list = appState.students.filter(s => s.originalClass === c);
+                const m = list.filter(s => s.gender === "남").length;
+                const f = list.filter(s => s.gender === "여").length;
+                const tot = list.length;
+                curSumMale += m; curSumFemale += f; curSumTotal += tot;
+                curTableRows += `
+                    <tr>
+                        <td style="padding: 7px 4px; border: 1px solid #64748b; font-weight: bold; text-align: center;">${c}반</td>
+                        <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${m}명</td>
+                        <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${f}명</td>
+                        <td style="padding: 7px 4px; border: 1px solid #64748b; font-weight: bold; text-align: center;">${tot}명</td>
+                    </tr>
+                `;
+            }
+            curTableRows += `
+                <tr style="background: #f8fafc; font-weight: bold;">
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">계</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${curSumMale}명</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${curSumFemale}명</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${curSumTotal}명</td>
+                </tr>
+            `;
+
+            statsCurTableBlock = `
+                <div style="margin-top: 26px;">
+                    <div style="font-size: 15px; font-weight: bold; margin-bottom: 8px;">
+                        ■ ${prevYear}학년도 ${appState.curGrade}학년 학급별 배정 통계표
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">현재 학급</th>
+                                <th style="width: 25%;">남학생</th>
+                                <th style="width: 25%;">여학생</th>
+                                <th style="width: 25%;">합계</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${curTableRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        pagesHtml += `
+            <div class="page-container">
+                <div class="header-top">
+                    <div class="title">${appState.school} ${appState.year}학년도 ${appState.nextGrade}학년 반편성 통계표</div>
+                </div>
+                <div class="author-line">
+                    학년부장: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(인)
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-item">
+                        <div class="label">내년 진급반 수</div>
+                        <div class="val">${appState.nextClassesCount}개 반</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">올해 학급 수</div>
+                        <div class="val">${curClassesCountText}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">전체 학생 수</div>
+                        <div class="val">${total}명</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">남학생 총 수</div>
+                        <div class="val">${maleTotal}명</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">여학생 총 수</div>
+                        <div class="val">${femaleTotal}명</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size: 15px; font-weight: bold; margin-bottom: 8px;">■ ${appState.year}학년도 ${appState.nextGrade}학년 학급별 배정 통계표</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">진급 학급</th>
+                                <th style="width: 25%;">남학생</th>
+                                <th style="width: 25%;">여학생</th>
+                                <th style="width: 25%;">합계</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${statsNextTableRows}
+                        </tbody>
+                    </table>
+                </div>
+
+                ${statsCurTableBlock}
+            </div>
+        `;
+
+        // 2. 내년 진급반 명단 페이지 (가반, 나반...)
+        for (let c = 1; c <= appState.nextClassesCount; c++) {
+            const classStudents = appState.students.filter(s => s.nextClass === String(c));
+            classStudents.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
+            const male = classStudents.filter(s => s.gender === "남").length;
+            const female = classStudents.filter(s => s.gender === "여").length;
+            const classLabel = getClassLabel(c);
+
+            const rows = classStudents.map((s, idx) => `
+                <tr>
+                    <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${idx + 1}</td>
+                    <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${s.name}</td>
+                    <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.gender}</td>
+                    <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.originalClass}반</td>
+                    <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.originalNumber}번</td>
+                    <td style="padding: 7px 8px; border: 1px solid #475569; text-align: left;">${s.notes || ''}</td>
+                </tr>
+            `).join("");
+
+            pagesHtml += `
+                <div class="page-container">
+                    <div class="header-top">
+                        <div class="title">${appState.school} ${appState.year}학년도 ${appState.nextGrade}학년 ${classLabel} 명렬표</div>
+                    </div>
+                    <div class="author-line">
+                        작성자: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(인)
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 11%;">진급반 번호</th>
+                                <th style="width: 17%;">성명</th>
+                                <th style="width: 8%;">성별</th>
+                                <th style="width: 12%;">현재 반</th>
+                                <th style="width: 12%;">현재 번호</th>
+                                <th style="width: 40%;">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows || '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #94a3b8;">배정 학생 없음</td></tr>'}
+                        </tbody>
+                    </table>
+                    <div class="footer-stat">재적인원: 남 ${male}명, 여 ${female}명 (계 ${classStudents.length}명)</div>
+                </div>
+            `;
+        }
+
+        // 3. 올해 반편성 명단 페이지 (1반, 2반... 결번 포함)
+        const curGradeText = appState.curGrade === 0 ? "신입생" : `${appState.curGrade}학년`;
+        if (appState.curGrade !== 0) {
+            for (let c = 1; c <= appState.curClassesCount; c++) {
+                const classStudents = appState.students.filter(s => s.originalClass === c);
+                const maxNum = classStudents.reduce((max, s) => Math.max(max, s.originalNumber || 0), 0) || 15;
+                const male = classStudents.filter(s => s.gender === "남").length;
+                const female = classStudents.filter(s => s.gender === "여").length;
+
+                const studentByNum = {};
+                classStudents.forEach(s => { studentByNum[s.originalNumber] = s; });
+
+                let curRows = "";
+                for (let n = 1; n <= maxNum; n++) {
+                    const s = studentByNum[n];
+                    if (s) {
+                        const nextLabel = s.nextClass ? `${getClassLabel(s.nextClass)}` : "-";
+                        curRows += `
+                            <tr>
+                                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.originalClass}반</td>
+                                <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${s.originalNumber}</td>
+                                <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${s.name}</td>
+                                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${s.gender}</td>
+                                <td style="padding: 7px 4px; border: 1px solid #475569; font-weight: bold; text-align: center;">${nextLabel}</td>
+                                <td style="padding: 7px 8px; border: 1px solid #475569; text-align: left;">${s.notes || ''}</td>
+                            </tr>
+                        `;
+                    } else {
+                        curRows += `
+                            <tr style="background: #f8fafc;">
+                                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${c}반</td>
+                                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">${n}</td>
+                                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">-</td>
+                                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">-</td>
+                                <td style="padding: 7px 4px; border: 1px solid #475569; text-align: center;">-</td>
+                                <td style="padding: 7px 8px; border: 1px solid #475569; text-align: center; color: #64748b; font-weight: bold;">결번</td>
+                            </tr>
+                        `;
+                    }
+                }
+
+                pagesHtml += `
+                    <div class="page-container">
+                        <div class="header-top">
+                            <div class="title">${appState.school} ${curGradeText} ${c}반 배정 명렬표</div>
+                        </div>
+                        <div class="author-line">
+                            담임: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(인)
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 12%;">현재 반</th>
+                                    <th style="width: 12%;">현재 번호</th>
+                                    <th style="width: 17%;">성명</th>
+                                    <th style="width: 8%;">성별</th>
+                                    <th style="width: 15%;">진급반</th>
+                                    <th style="width: 36%;">비고</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${curRows || '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #94a3b8;">배정 학생 없음</td></tr>'}
+                            </tbody>
+                        </table>
+                        <div class="footer-stat">재적인원: 남 ${male}명, 여 ${female}명 (계 ${classStudents.length}명)</div>
+                    </div>
+                `;
+            }
+        }
+
+        const html = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>${appState.school} ${appState.year}학년도 반편성 전체 자료 인쇄</title>
+                <style>
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", Dotum, sans-serif; margin: 0; padding: 0; color: #0f172a; }
+                    .page-container { page-break-after: always; break-after: page; }
+                    .page-container:last-child { page-break-after: avoid; break-after: avoid; }
+                    .header-top { text-align: center; margin-bottom: 8px; }
+                    .title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+                    .author-line { text-align: right; font-size: 13px; font-weight: bold; margin-top: 36px; margin-bottom: 18px; }
+                    .summary-box { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 22px; text-align: center; }
+                    .summary-item { border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 4px; background: #f8fafc; }
+                    .summary-item .label { font-size: 11px; font-weight: bold; color: #475569; margin-bottom: 4px; }
+                    .summary-item .val { font-size: 16px; font-weight: 900; color: #0f172a; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+                    th { background: #f1f5f9; padding: 7px 4px; border: 1px solid #475569; font-weight: bold; }
+                    .footer-stat { margin-top: 10px; text-align: right; font-size: 13px; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                ${pagesHtml}
+            </body>
+            </html>
+        `;
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+        setTimeout(() => { printWin.focus(); printWin.print(); }, 400);
+    }
+
+    /* 엑셀 파일 내보내기 */
+    function exportPlacementExcel() {
+        if (appState.students.length === 0) {
+            showToast("내보낼 학생 데이터가 없습니다.");
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+        const prevYear = (parseInt(appState.year, 10) || defaultYear) - 1;
+        const total = appState.students.length;
+        const maleTotal = appState.students.filter(s => s.gender === "남").length;
+        const femaleTotal = appState.students.filter(s => s.gender === "여").length;
+        const curClassesCountText = appState.curGrade === 0 ? "해당 없음" : `${appState.curClassesCount}개 반`;
+
+        // ==========================================
+        // 1. 통계표 시트 생성
+        // ==========================================
+        const statsRows = [];
+        statsRows.push([`${appState.school} ${appState.year}학년도 ${appState.nextGrade}학년 반편성 통계표`]);
+        statsRows.push([]);
+        statsRows.push(["[요약 통계]"]);
+        statsRows.push(["내년 진급반 수", "올해 학급 수", "전체 학생 수", "남학생 총 수", "여학생 총 수"]);
+        statsRows.push([
+            `${appState.nextClassesCount}개 반`,
+            curClassesCountText,
+            `${total}명`,
+            `${maleTotal}명`,
+            `${femaleTotal}명`
+        ]);
+        statsRows.push([]);
+
+        // 1-1. 진급 학년 배정 통계표 (가반, 나반...)
+        statsRows.push([`■ ${appState.year}학년도 ${appState.nextGrade}학년 학급별 배정 통계표`]);
+        statsRows.push(["진급 학급", "남학생(명)", "여학생(명)", "합계(명)"]);
+
+        let nextSumMale = 0, nextSumFemale = 0, nextSumTotal = 0;
+        for (let c = 1; c <= appState.nextClassesCount; c++) {
+            const cStr = `${c}`;
+            const list = appState.students.filter(s => s.nextClass === cStr);
+            const m = list.filter(s => s.gender === "남").length;
+            const f = list.filter(s => s.gender === "여").length;
+            const tot = list.length;
+            nextSumMale += m;
+            nextSumFemale += f;
+            nextSumTotal += tot;
+
+            statsRows.push([getClassLabel(c), m, f, tot]);
+        }
+        statsRows.push(["계", nextSumMale, nextSumFemale, nextSumTotal]);
+
+        // 1-2. 현재 학년 배정 통계표 (신입생 제외)
+        if (appState.curGrade !== 0) {
+            statsRows.push([]);
+            statsRows.push([`■ ${prevYear}학년도 ${appState.curGrade}학년 학급별 배정 통계표`]);
+            statsRows.push(["현재 학급", "남학생(명)", "여학생(명)", "합계(명)"]);
+
+            let curSumMale = 0, curSumFemale = 0, curSumTotal = 0;
+            for (let c = 1; c <= appState.curClassesCount; c++) {
+                const list = appState.students.filter(s => s.originalClass === c);
+                const m = list.filter(s => s.gender === "남").length;
+                const f = list.filter(s => s.gender === "여").length;
+                const tot = list.length;
+                curSumMale += m;
+                curSumFemale += f;
+                curSumTotal += tot;
+
+                statsRows.push([`${c}반`, m, f, tot]);
+            }
+            statsRows.push(["계", curSumMale, curSumFemale, curSumTotal]);
+        }
+
+        const wsStats = XLSX.utils.aoa_to_sheet(statsRows);
+        XLSX.utils.book_append_sheet(wb, wsStats, "반편성통계표");
+
+        // ==========================================
+        // 2. 내년 진급반별 개별 시트 생성 (가반, 나반...)
+        // ==========================================
+        for (let c = 1; c <= appState.nextClassesCount; c++) {
+            const classStudents = appState.students.filter(s => s.nextClass === String(c));
+            classStudents.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
+            const sheetName = `${appState.nextGrade}학년_${getClassLabel(c)}`;
+            const sheetRows = [
+                [`${appState.school} ${appState.year}학년도 ${appState.nextGrade}학년 ${getClassLabel(c)} 명렬표`],
+                [`재적인원: 남 ${classStudents.filter(s => s.gender === '남').length}명, 여 ${classStudents.filter(s => s.gender === '여').length}명 (계 ${classStudents.length}명)`],
+                [],
+                ["진급반 번호", "성명", "성별", "현재 반", "현재 번호", "비고"]
+            ];
+
+            classStudents.forEach((st, idx) => {
+                sheetRows.push([
+                    idx + 1,
+                    st.name,
+                    st.gender,
+                    `${st.originalClass}반`,
+                    `${st.originalNumber}번`,
+                    st.notes || ""
+                ]);
+            });
+
+            const wsClass = XLSX.utils.aoa_to_sheet(sheetRows);
+            XLSX.utils.book_append_sheet(wb, wsClass, sheetName);
+        }
+
+        // ==========================================
+        // 3. 올해 반별 개별 시트 생성 (1반, 2반... 결번 포함)
+        // ==========================================
+        if (appState.curGrade !== 0) {
+            for (let c = 1; c <= appState.curClassesCount; c++) {
+                const classStudents = appState.students.filter(s => s.originalClass === c);
+                const maxNum = classStudents.reduce((max, s) => Math.max(max, s.originalNumber || 0), 0) || 15;
+                const studentByNum = {};
+                classStudents.forEach(s => { studentByNum[s.originalNumber] = s; });
+
+                const sheetName = `${appState.curGrade}학년_${c}반`;
+                const sheetRows = [
+                    [`${appState.school} ${appState.curGrade}학년 ${c}반 배정 명렬표`],
+                    [`재적인원: 남 ${classStudents.filter(s => s.gender === '남').length}명, 여 ${classStudents.filter(s => s.gender === '여').length}명 (계 ${classStudents.length}명)`],
+                    [],
+                    ["현재 반", "현재 번호", "성명", "성별", "진급 반", "비고"]
+                ];
+
+                for (let n = 1; n <= maxNum; n++) {
+                    const st = studentByNum[n];
+                    if (st) {
+                        sheetRows.push([
+                            `${st.originalClass}반`,
+                            st.originalNumber,
+                            st.name,
+                            st.gender,
+                            st.nextClass ? getClassLabel(st.nextClass) : "미배정",
+                            st.notes || ""
+                        ]);
+                    } else {
+                        // 1반 1번, 2반 10번 등 결번 행 표기
+                        sheetRows.push([
+                            `${c}반`,
+                            n,
+                            "-",
+                            "-",
+                            "-",
+                            "결번"
+                        ]);
+                    }
+                }
+
+                const wsCurClass = XLSX.utils.aoa_to_sheet(sheetRows);
+                XLSX.utils.book_append_sheet(wb, wsCurClass, sheetName);
+            }
+        }
+
+        XLSX.writeFile(wb, `${appState.school}_${appState.year}학년도_${appState.nextGrade}학년_반편성_자료집.xlsx`);
+        showToast("통계표 및 학급별 시트로 구성된 엑셀 파일이 다운로드되었습니다.");
+    }
+
+    /* 반편성 통계표 인쇄 */
+    function printStatsReport() {
+        const total = appState.students.length;
+        const maleTotal = appState.students.filter(s => s.gender === "남").length;
+        const femaleTotal = appState.students.filter(s => s.gender === "여").length;
+        const prevYear = (parseInt(appState.year, 10) || defaultYear) - 1;
+
+        const printWin = window.open('', '_blank');
+        if (!printWin) {
+            showToast("인쇄 팝업이 차단되었습니다.");
+            return;
+        }
+
+        // 1. 진급 학년 배정 통계 테이블 행 생성
+        let nextTableRows = "";
+        let nextSumMale = 0;
+        let nextSumFemale = 0;
+        let nextSumTotal = 0;
+
+        for (let c = 1; c <= appState.nextClassesCount; c++) {
+            const cStr = `${c}`;
+            const classStudents = appState.students.filter(s => s.nextClass === cStr);
+            const classMale = classStudents.filter(s => s.gender === "남").length;
+            const classFemale = classStudents.filter(s => s.gender === "여").length;
+            const classTotal = classStudents.length;
+            const classLabel = getClassLabel(c);
+
+            nextSumMale += classMale;
+            nextSumFemale += classFemale;
+            nextSumTotal += classTotal;
+
+            nextTableRows += `
+                <tr>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; font-weight: bold; text-align: center;">${classLabel}</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${classMale}명</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${classFemale}명</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; font-weight: bold; text-align: center;">${classTotal}명</td>
+                </tr>
+            `;
+        }
+
+        nextTableRows += `
+            <tr style="background: #f8fafc; font-weight: bold;">
+                <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">계</td>
+                <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${nextSumMale}명</td>
+                <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${nextSumFemale}명</td>
+                <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${nextSumTotal}명</td>
+            </tr>
+        `;
+
+        // 2. 현재 학년 배정 통계 테이블 행 생성 (신입생이 아닌 경우)
+        let curTableBlock = "";
+        if (appState.curGrade !== 0) {
+            let curTableRows = "";
+            let curSumMale = 0;
+            let curSumFemale = 0;
+            let curSumTotal = 0;
+
+            for (let c = 1; c <= appState.curClassesCount; c++) {
+                const classStudents = appState.students.filter(s => s.originalClass === c);
+                const classMale = classStudents.filter(s => s.gender === "남").length;
+                const classFemale = classStudents.filter(s => s.gender === "여").length;
+                const classTotal = classStudents.length;
+
+                curSumMale += classMale;
+                curSumFemale += classFemale;
+                curSumTotal += classTotal;
+
+                curTableRows += `
+                    <tr>
+                        <td style="padding: 7px 4px; border: 1px solid #64748b; font-weight: bold; text-align: center;">${c}반</td>
+                        <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${classMale}명</td>
+                        <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${classFemale}명</td>
+                        <td style="padding: 7px 4px; border: 1px solid #64748b; font-weight: bold; text-align: center;">${classTotal}명</td>
+                    </tr>
+                `;
+            }
+
+            curTableRows += `
+                <tr style="background: #f8fafc; font-weight: bold;">
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">계</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${curSumMale}명</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${curSumFemale}명</td>
+                    <td style="padding: 7px 4px; border: 1px solid #64748b; text-align: center;">${curSumTotal}명</td>
+                </tr>
+            `;
+
+            curTableBlock = `
+                <div style="margin-top: 26px;">
+                    <div style="font-size: 15px; font-weight: bold; margin-bottom: 8px;">
+                        ■ ${prevYear}학년도 ${appState.curGrade}학년 학급별 배정 통계표
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">현재 학급</th>
+                                <th style="width: 25%;">남학생</th>
+                                <th style="width: 25%;">여학생</th>
+                                <th style="width: 25%;">합계</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${curTableRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        const curClassesCountText = appState.curGrade === 0 ? "해당 없음" : `${appState.curClassesCount}개 반`;
+
+        const html = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>${appState.school} ${appState.year}학년도 ${appState.nextGrade}학년 반편성 통계표</title>
+                <style>
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", Dotum, sans-serif; margin: 0; padding: 0; color: #0f172a; }
+                    .header-top { text-align: center; margin-bottom: 8px; }
+                    .title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+                    .author-line { text-align: right; font-size: 13px; font-weight: bold; margin-top: 36px; margin-bottom: 22px; }
+                    .summary-box { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 22px; text-align: center; }
+                    .summary-item { border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 4px; background: #f8fafc; }
+                    .summary-item .label { font-size: 11px; font-weight: bold; color: #475569; margin-bottom: 4px; }
+                    .summary-item .val { font-size: 16px; font-weight: 900; color: #0f172a; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                    th { background: #f1f5f9; padding: 7px 4px; border: 1px solid #64748b; font-weight: bold; }
+                    .table-title { font-size: 15px; font-weight: bold; margin-bottom: 8px; }
+                </style>
+            </head>
+            <body>
+                <div class="header-top">
+                    <div class="title">${appState.school} ${appState.year}학년도 ${appState.nextGrade}학년 반편성 통계표</div>
+                </div>
+                <div class="author-line">
+                    학년부장: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(인)
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-item">
+                        <div class="label">내년 진급반 수</div>
+                        <div class="val">${appState.nextClassesCount}개 반</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">올해 학급 수</div>
+                        <div class="val">${curClassesCountText}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">전체 학생 수</div>
+                        <div class="val">${total}명</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">남학생 총 수</div>
+                        <div class="val">${maleTotal}명</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">여학생 총 수</div>
+                        <div class="val">${femaleTotal}명</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="table-title">■ ${appState.year}학년도 ${appState.nextGrade}학년 학급별 배정 통계표</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">진급 학급</th>
+                                <th style="width: 25%;">남학생</th>
+                                <th style="width: 25%;">여학생</th>
+                                <th style="width: 25%;">합계</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${nextTableRows}
+                        </tbody>
+                    </table>
+                </div>
+
+                ${curTableBlock}
+            </body>
+            </html>
+        `;
+
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+        setTimeout(() => {
+            printWin.focus();
+            printWin.print();
+        }, 350);
+    }
+
+    /* 백업 및 복원 모달 관리 함수 */
+    function openBackupModal() {
+        const modal = document.getElementById("backup-modal");
+        if (modal) {
+            modal.classList.remove("hidden");
+        }
+    }
+
+    function closeBackupModal() {
+        const modal = document.getElementById("backup-modal");
+        if (modal) {
+            modal.classList.add("hidden");
+        }
+    }
+
+    /* 전체 데이터 JSON 파일 백업 다운로드 */
+    function exportBackupJSON() {
+        try {
+            const dataToExport = {
+                school: appState.school,
+                year: appState.year,
+                curGrade: appState.curGrade,
+                curClassesCount: appState.curClassesCount,
+                nextGrade: appState.nextGrade,
+                nextClassesCount: appState.nextClassesCount,
+                students: appState.students,
+                confirmedClasses: appState.confirmedClasses || {},
+                exportedAt: new Date().toISOString()
+            };
+            const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+            const dlAnchor = document.createElement("a");
+            dlAnchor.setAttribute("href", jsonString);
+            const backupFileName = `${appState.school}_${appState.year}학년도_${appState.nextGrade}학년_반편성백업.json`;
+            dlAnchor.setAttribute("download", backupFileName);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            showToast("백업 파일이 다운로드되었습니다.");
+            closeBackupModal();
+        } catch (e) {
+            console.error(e);
+            showToast("백업 파일 생성 중 오류가 발생했습니다.");
+        }
+    }
+
+    /* 백업 JSON 파일로부터 데이터 복원 */
+    function importBackupJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!data || !Array.isArray(data.students)) {
+                    showToast("유효한 백업 파일이 아닙니다.");
+                    return;
+                }
+
+                appState.school = data.school || appState.school;
+                appState.year = data.year || appState.year;
+                appState.curGrade = (data.curGrade !== undefined && data.curGrade !== null) ? data.curGrade : appState.curGrade;
+                appState.curClassesCount = data.curClassesCount || appState.curClassesCount;
+                appState.nextGrade = data.nextGrade || (appState.curGrade === 0 ? 1 : Math.min(appState.curGrade + 1, 6));
+                appState.nextClassesCount = data.nextClassesCount || appState.nextClassesCount;
+                appState.students = data.students || [];
+                appState.confirmedClasses = data.confirmedClasses || {};
+
+                sortStudents();
+                saveToLocalStorage();
+
+                // UI 인풋 동기화
+                const elSchool = document.getElementById("setting-school");
+                const elYear = document.getElementById("setting-year");
+                const elCurGrade = document.getElementById("setting-cur-grade");
+                const elCurClasses = document.getElementById("setting-cur-classes");
+                const elNextClasses = document.getElementById("setting-next-classes");
+
+                if (elSchool) elSchool.value = appState.school;
+                if (elYear) elYear.value = appState.year;
+                if (elCurGrade) elCurGrade.value = appState.curGrade;
+                if (elCurClasses) elCurClasses.value = appState.curClassesCount;
+                if (elNextClasses) elNextClasses.value = appState.nextClassesCount;
+
+                handleCurrentGradeChange();
+                updateDynamicLabels();
+                updateHeaderSummaries();
+                closeBackupModal();
+
+                if (appState.currentTab === "cards") renderStudentCards();
+                if (appState.currentTab === "board") renderBoardView();
+                if (appState.currentTab === "next-roster") renderNextRosterView();
+                if (appState.currentTab === "cur-roster") renderCurRosterView();
+                if (appState.currentTab === "stats") renderStatsView();
+
+                showToast("백업 데이터가 성공적으로 복원되었습니다.");
+            } catch (err) {
+                console.error(err);
+                showToast("백업 파일을 불러오는 중 오류가 발생했습니다.");
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = "";
+    }
+
+    /* 결번 데이터 동기화 및 유지 함수 */
+    function syncCurrentMissingStudents() {
+        if (!appState.students || appState.students.length === 0) return;
+        // 1반 1번 강감찬 제외 확인 (결번 유지)
+        const c1n1Idx = appState.students.findIndex(s => s.originalClass === 1 && (s.originalNumber === 1 || s.name === "강감찬"));
+        if (c1n1Idx !== -1) {
+            appState.students.splice(c1n1Idx, 1);
+        }
+        // 2반 10번 제외 확인 (11번 이후 번호 당김 없이 결번 유지)
+        const c2n10Idx = appState.students.findIndex(s => s.originalClass === 2 && s.originalNumber === 10);
+        if (c2n10Idx !== -1) {
+            appState.students.splice(c2n10Idx, 1);
+        }
+        sortStudents();
+    }
+
+    window.onload = function() {
+        const hasSaved = loadFromLocalStorage();
+        if (!hasSaved) {
+            const elYear = document.getElementById("setting-year");
+            if (elYear) elYear.value = defaultYear;
+            const elCurClasses = document.getElementById("setting-cur-classes");
+            if (elCurClasses) elCurClasses.value = 2;
+            const elNextClasses = document.getElementById("setting-next-classes");
+            if (elNextClasses) elNextClasses.value = 2;
+        }
+        syncCurrentMissingStudents();
+        handleCurrentGradeChange();
+        updateDynamicLabels();
+        updateHeaderSummaries();
+        switchTab("instructions");
+    };
+</script>
+</body>
+</html>
